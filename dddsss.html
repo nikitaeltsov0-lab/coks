@@ -1,0 +1,104 @@
+// Функция выбора случайного символа с учетом весов
+    function getRandomSymbol() {
+        let totalWeight = symbols.reduce((sum, s) => sum + s.weight, 0);
+        let random = Math.random() * totalWeight;
+        
+        for (let s of symbols) {
+            if (random < s.weight) {
+                return s.icon;
+            }
+            random -= s.weight;
+        }
+        return symbols[0].icon;
+    }
+
+    function spin() {
+        // Проверка баланса
+        if (balance < bet) {
+            statusDiv.textContent = "Недостаточно средств!";
+            statusDiv.className = "lose";
+            spinBtn.disabled = true;
+            return;
+        }
+
+        // Списание ставки
+        balance -= bet;
+        updateUI();
+        
+        // Блокируем кнопку и запускаем анимацию
+        spinBtn.disabled = true;
+        statusDiv.textContent = "Крутим...";
+        statusDiv.className = "";
+
+        let spins = 0;
+        // Анимация прокрутки (меняем символы быстро 20 раз)
+        let interval = setInterval(() => {
+            slots.forEach(slot => slot.textContent = getRandomSymbol());
+            spins++;
+
+            // Остановка прокрутки
+            if (spins > 20) {
+                clearInterval(interval);
+                finalizeSpin();
+            }
+        }, 100);
+    }
+
+    function finalizeSpin() {
+        // Здесь определяем окончательный результат
+        const result1 = getRandomSymbol();
+        const result2 = getRandomSymbol();
+        const result3 = getRandomSymbol();
+
+        slots[0].textContent = result1;
+        slots[1].textContent = result2;
+        slots[2].textContent = result3;
+
+        checkWin(result1, result2, result3);
+        
+        spinBtn.disabled = false;
+        
+        // Если баланс 0 после проигрыша - блокируем навсегда
+        if (balance < bet) {
+            spinBtn.disabled = true;
+            spinBtn.textContent = "GAME OVER";
+            spinBtn.style.backgroundColor = "#95a5a6";
+        }
+    }
+
+    function checkWin(s1, s2, s3) {
+        // ЛОГИКА ВЫИГРЫША
+        
+        // 1. Джекпот: 777 (+1000)
+        if (s1 === '7️⃣' && s2 === '7️⃣' && s3 === '7️⃣') {
+            balance += 1000;
+            statusDiv.textContent = "ДЖЕКПОТ! +1000 💰";
+            statusDiv.className = "jackpot";
+        }
+        // 2. Деньги: 💵💵💵 (+100)
+        else if (s1 === '💵' && s2 === '💵' && s3 === '💵') {
+            balance += 100;
+            statusDiv.textContent = "Выигрыш! +100 💰";
+            statusDiv.className = "win";
+        }
+        // 3. Звезды: ⭐⭐⭐ (Ничего, как ты просил)
+        else if (s1 === '⭐' && s2 === '⭐' && s3 === '⭐') {
+            statusDiv.textContent = "Три звезды... Пусто!";
+            statusDiv.className = "lose";
+        }
+        // 4. Любая другая комбинация
+        else {
+            statusDiv.textContent = "Попробуй еще раз";
+            statusDiv.className = "lose";
+        }
+        
+        updateUI();
+    }
+
+    function updateUI() {
+        balanceSpan.textContent = balance;
+    }
+</script>
+
+</body>
+</html>
