@@ -2,233 +2,270 @@
 <html lang="ru">
 <head>
     <meta charset="UTF-8">
-    <title>Арканоид - Прототип с рестартом</title>
+    <title>Web FNAF Prototype</title>
     <style>
-        body { 
-            background: #222; 
-            color: #fff; 
-            text-align: center; 
-            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            margin-top: 20px;
+        body {
+            margin: 0;
+            overflow: hidden;
+            background-color: #000;
+            font-family: 'Courier New', Courier, monospace;
+            color: white;
+            user-select: none;
         }
-        #game-container {
+
+        /* --- ОФИС --- */
+        #office {
+            width: 100vw;
+            height: 100vh;
+            background-color: #333; /* Сюда вставишь картинку офиса */
+            background-size: cover;
             position: relative;
-            width: 600px;
-            height: 400px;
+            transition: background-position 0.2s;
         }
-        canvas { 
-            background: #000; 
-            border: 3px solid #444; 
-            display: block; 
-            cursor: none; /* Скрываем курсор над полем */
-        }
-        /* Стили для экранов меню */
-        .overlay {
+
+        /* ДВЕРИ */
+        .door {
             position: absolute;
-            top: 0; left: 0; width: 100%; height: 100%;
-            background: rgba(0,0,0,0.8);
-            display: flex;
-            flex-direction: column;
-            justify-content: center;
-            align-items: center;
-            display: none; /* Скрыты по умолчанию */
+            top: 0;
+            width: 15%;
+            height: 100%;
+            background-color: #111; /* Цвет темного прохода */
+            border: 5px solid #000;
+            z-index: 1;
         }
-        .overlay h2 { margin-bottom: 20px; font-size: 32px; color: #00FFDD; }
-        .btn {
-            padding: 15px 30px;
+        #door-left { left: 0; }
+        #door-right { right: 0; }
+
+        /* Сами створки дверей (анимация закрытия) */
+        .metal-door {
+            width: 100%;
+            height: 0%; /* По умолчанию открыта (высота 0) */
+            background-color: #555;
+            background-image: repeating-linear-gradient(45deg, #444 0, #444 10px, #555 10px, #555 20px);
+            position: absolute;
+            top: 0;
+            transition: height 0.3s ease-in;
+            border-bottom: 5px solid red;
+        }
+        .closed { height: 100%; }
+
+        /* КНОПКИ ДВЕРЕЙ */
+        .door-btn {
+            position: absolute;
+            top: 50%;
+            width: 60px;
+            height: 60px;
+            background-color: red;
+            border-radius: 50%;
+            cursor: pointer;
+            border: 4px solid #fff;
+            z-index: 2;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: bold;
+            box-shadow: 0 0 10px red;
+        }
+        .door-btn:hover { filter: brightness(1.2); }
+        .door-btn.active { background-color: green; box-shadow: 0 0 10px green; }
+        
+        #btn-left { left: 16%; }
+        #btn-right { right: 16%; }
+
+        /* --- КАМЕРЫ --- */
+        #camera-toggle {
+            position: absolute;
+            bottom: 20px;
+            left: 50%;
+            transform: translateX(-50%);
+            width: 300px;
+            height: 40px;
+            background: rgba(255, 255, 255, 0.2);
+            border: 2px solid white;
+            color: white;
             font-size: 20px;
             cursor: pointer;
-            background: #FF3366;
-            color: white;
-            border: none;
-            border-radius: 5px;
-            transition: background 0.2s;
+            z-index: 10;
         }
-        .btn:hover { background: #ff6688; }
-        #startScreen { display: flex; } /* Показываем старт сразу */
+        #camera-toggle:hover { background: rgba(255, 255, 255, 0.4); }
+
+        #camera-screen {
+            display: none; /* Скрыт по умолчанию */
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100vw;
+            height: 100vh;
+            background-color: #000;
+            z-index: 5;
+            border: 10px solid #333;
+            box-sizing: border-box;
+        }
+
+        #camera-view {
+            width: 100%;
+            height: 100%;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            font-size: 30px;
+            color: #ccc;
+            background-size: cover;
+            position: relative;
+        }
+
+        /* Эффект помех (Static) */
+        .static {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: url('https://media.giphy.com/media/3o7aD2e1E06Gehj0fY/giphy.gif'); /* ГИФКА ШУМА */
+            opacity: 0.1;
+            pointer-events: none;
+        }
+
+        /* КАРТА КАМЕР */
+        #map {
+            position: absolute;
+            bottom: 80px;
+            right: 20px;
+            width: 200px;
+            height: 150px;
+            border: 2px solid white;
+            background: rgba(0,0,0,0.7);
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 5px;
+            padding: 10px;
+        }
+
+        .cam-btn {
+            background: #333;
+            color: white;
+            border: 1px solid white;
+            cursor: pointer;
+        }
+        .cam-btn:hover { background: #555; }
+        .cam-btn.selected { background: green; }
+
     </style>
 </head>
 <body>
 
-    <h2>Счет: <span id="score">0</span></h2>
-    
     <div id="game-container">
-        <canvas id="gameCanvas" width="600" height="400"></canvas>
-        
-        <div id="startScreen" class="overlay">
-             <button class="btn" onclick="startGame()">ИГРАТЬ</button>
+        <div id="office">
+            <div id="door-left" class="door">
+                <div id="metal-left" class="metal-door"></div>
+            </div>
+            <div id="btn-left" class="door-btn" onclick="toggleDoor('left')">DOOR</div>
+
+            <div id="door-right" class="door">
+                <div id="metal-right" class="metal-door"></div>
+            </div>
+            <div id="btn-right" class="door-btn" onclick="toggleDoor('right')">DOOR</div>
         </div>
 
-        <div id="endScreen" class="overlay">
-            <h2 id="endMessage">ИГРА ОКОНЧЕНА</h2>
-            <button class="btn" onclick="restartGame()">Начать заново</button>
+        <button id="camera-toggle" onclick="toggleMonitor()">Open/Close Monitor</button>
+
+        <div id="camera-screen">
+            <div id="camera-view">
+                <span id="cam-label">CAM 1A - Stage</span>
+                <div class="static"></div>
+            </div>
+            
+            <div id="map">
+                <button class="cam-btn selected" onclick="switchCam('1A', this)">CAM 1A</button>
+                <button class="cam-btn" onclick="switchCam('1B', this)">CAM 1B</button>
+                <button class="cam-btn" onclick="switchCam('5', this)">CAM 5</button>
+                <button class="cam-btn" onclick="switchCam('2A', this)">CAM 2A</button>
+            </div>
         </div>
     </div>
 
-<script>
-    const canvas = document.getElementById("gameCanvas");
-    const ctx = canvas.getContext("2d");
-    const scoreEl = document.getElementById("score");
-    const startScreen = document.getElementById("startScreen");
-    const endScreen = document.getElementById("endScreen");
-    const endMessage = document.getElementById("endMessage");
-
-    let running = false;
-    let score = 0;
-    let animationId;
-
-    // --- Настройки игры ---
-    // Мяч
-    let x, y, dx, dy;
-    const ballRadius = 10;
-    const initialSpeed = 4;
-
-    // Платформа
-    const pWidth = 100, pHeight = 12;
-    let pX;
-
-    // Блоки
-    const brickRowCount = 4;
-    const brickColumnCount = 6;
-    const brickW = 80, brickH = 25, brickPad = 10;
-    const brickOffsetTop = 40, brickOffsetLeft = 35;
-    let bricks = [];
-    const totalBricks = brickRowCount * brickColumnCount;
-
-    // --- Инициализация и сброс ---
-    function initVariables() {
-        x = canvas.width / 2;
-        y = canvas.height - 40;
-        dx = initialSpeed * (Math.random() > 0.5 ? 1 : -1); // Случайное направление старта
-        dy = -initialSpeed;
-        pX = (canvas.width - pWidth) / 2;
-        score = 0;
-        scoreEl.innerText = "0";
+    <script>
+        // Состояние игры
+        let isMonitorUp = false;
+        let currentCam = '1A';
         
-        // Создаем блоки заново
-        for(let c=0; c<brickColumnCount; c++) {
-            bricks[c] = [];
-            for(let r=0; r<brickRowCount; r++) {
-                bricks[c][r] = { x: 0, y: 0, status: 1 };
+        // Ссылки на картинки (СЮДА ВСТАВЛЯТЬ ССЫЛКИ ИЗ ГУГЛА)
+        const images = {
+            office: 'linear-gradient(to bottom, #222, #111)', // Замени на url('ссылка')
+            cam1A_empty: '#111', // Сцена пустая (цвет или url)
+            cam1A_freddy: 'radial-gradient(circle, #533 0%, #000 70%)', // Фредди на сцене
+            cam1B: '#222', 
+            cam5: '#1a1a1a', 
+            cam2A: '#0f0f0f'
+        };
+
+        // Логика дверей
+        function toggleDoor(side) {
+            const door = document.getElementById(`metal-${side}`);
+            const btn = document.getElementById(`btn-${side}`);
+            
+            // Проверяем, закрыта ли дверь (класс .closed)
+            if (door.classList.contains('closed')) {
+                door.classList.remove('closed'); // Открываем
+                btn.classList.remove('active');
+            } else {
+                door.classList.add('closed'); // Закрываем
+                btn.classList.add('active');
             }
         }
-    }
 
-    // --- Управление ---
-    canvas.addEventListener("mousemove", (e) => {
-        if (!running) return;
-        const rect = canvas.getBoundingClientRect();
-        let relativeX = e.clientX - rect.left;
-        // Ограничиваем движение платформы стенками
-        if(relativeX > 0 && relativeX < canvas.width) {
-            pX = relativeX - pWidth / 2;
+        // Логика планшета
+        function toggleMonitor() {
+            const screen = document.getElementById('camera-screen');
+            isMonitorUp = !isMonitorUp;
+            
+            if (isMonitorUp) {
+                screen.style.display = 'block';
+                updateCamView(); // Обновить картинку при открытии
+            } else {
+                screen.style.display = 'none';
+            }
         }
-    });
-// --- Основные функции ---
-    function startGame() {
-        startScreen.style.display = "none";
-        initVariables();
-        running = true;
-        draw();
-    }
 
-    function restartGame() {
-        endScreen.style.display = "none";
-        initVariables();
-        running = true;
-        draw();
-    }
+        // Переключение камер
+        function switchCam(camName, btnElement) {
+            currentCam = camName;
+            
+            // Подсветка кнопок
+            document.querySelectorAll('.cam-btn').forEach(b => b.classList.remove('selected'));
+            btnElement.classList.add('selected');
 
-    function gameOver(isVictory) {
-        running = false;
-        cancelAnimationFrame(animationId); // Останавливаем цикл
-        if (isVictory) {
-            endMessage.innerText = "ПОБЕДА! Все блоки разбиты!";
-            endMessage.style.color = "#00FFDD";
-        } else {
-            endMessage.innerText = "Поражение. Мяч упущен.";
-            endMessage.style.color = "#FF3366";
+            updateCamView();
         }
-        endScreen.style.display = "flex";
-    }
 
-    // --- Отрисовка и логика ---
-    function draw() {
-        if (!running) return;
-        ctx.clearRect(0, 0, canvas.width, canvas.height);
+        // Обновление вида камеры (Простой ИИ аниматроника)
+        function updateCamView() {
+            const view = document.getElementById('camera-view');
+            const label = document.getElementById('cam-label');
 
-        // Рисуем блоки и проверяем попадания
-        for(let c=0; c<brickColumnCount; c++) {
-            for(let r=0; r<brickRowCount; r++) {
-                let b = bricks[c][r];
-                if(b.status === 1) {
-                    let bx = c*(brickW+brickPad) + brickOffsetLeft;
-                    let by = r*(brickH+brickPad) + brickOffsetTop;
-                    b.x = bx;
-                    b.y = by;
-                    // Цвет зависит от ряда
-                    ctx.fillStyle = hsl(${r * 45 + 20}, 80%, 55%);
-                    ctx.fillRect(bx, by, brickW, brickH);
+            label.innerText = `CAM ${currentCam} - Signal...`;
 
-                    // Коллизия с блоком
-                    if(x + ballRadius > bx && x - ballRadius < bx + brickW && 
-                       y + ballRadius > by && y - ballRadius < by + brickH) {
-                        dy = -dy;
-                        b.status = 0;
-                        score++;
-                        scoreEl.innerText = score;
-                        // Проверка ПОБЕДЫ
-                        if(score === totalBricks) {
-                            gameOver(true);
-                            return; 
-                        }
-                    }
+            // Логика картинок
+            if (currentCam === '1A') {
+                // Шанс 50/50 увидеть аниматроника на сцене
+                if (Math.random() > 0.5) {
+                    view.style.background = images.cam1A_freddy;
+                    label.innerText += " (DETECTED!)";
+                } else {
+                    view.style.background = images.cam1A_empty;
                 }
+            } else if (currentCam === '1B') {
+                view.style.background = images.cam1B;
+            } else if (currentCam === '5') {
+                view.style.background = images.cam5;
+            } else if (currentCam === '2A') {
+                view.style.background = images.cam2A;
             }
         }
 
-        // Рисуем платформу
-        ctx.fillStyle = "#fff";
-        ctx.fillRect(pX, canvas.height - pHeight - 10, pWidth, pHeight);
+        // Устанавливаем фон офиса при загрузке
+        document.getElementById('office').style.background = images.office;
 
-        // Рисуем мяч
-        ctx.beginPath();
-        ctx.arc(x, y, ballRadius, 0, Math.PI*2);
-        ctx.fillStyle = "#00FFDD";
-        ctx.fill();
-        ctx.closePath();
-
-        // Физика стен
-        if(x + dx > canvas.width - ballRadius || x + dx < ballRadius) dx = -dx;
-        if(y + dy < ballRadius) dy = -dy;
-        
-        // Физика пола и платформы
-        else if(y + dy > canvas.height - ballRadius - 10) {
-            // Если попали в платформу
-            if(x > pX && x < pX + pWidth) {
-                 dy = -dy;
-                 // Небольшое ускорение для интереса
-                 dx = dx * 1.05;
-                 dy = dy * 1.05;
-            }
-            // Если не попали - ПРОИГРЫШ
-            else {
-                gameOver(false);
-                return;
-            }
-        }
-
-        x += dx;
-        y += dy;
-        animationId = requestAnimationFrame(draw);
-    }
-
-    // Рисуем фон один раз при загрузке, чтобы не было черного квадрата
-    ctx.fillStyle = '#111';
-    ctx.fillRect(0,0,canvas.width, canvas.height);
-</script>
+    </script>
 </body>
 </html>
