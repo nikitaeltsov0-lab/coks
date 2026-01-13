@@ -1,263 +1,159 @@
-Никита, [13.01.2026 10:15]
+Никита, [13.01.2026 11:00]
 <!DOCTYPE html>
 <html lang="ru">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Knife Hit - Исправленная физика</title>
+    <title>Block Buster Prototype</title>
     <style>
-        body {
-            margin: 0; padding: 0; background-color: #1a1a1a;
-            display: flex; justify-content: center; align-items: center;
-            height: 100vh; overflow: hidden; font-family: 'Arial', sans-serif;
-            touch-action: none;
-        }
-        #game-container { position: relative; }
-        canvas { background: #2c3e50; display: block; cursor: pointer; border-radius: 10px; }
-        #ui-layer {
-            position: absolute; top: 0; left: 0; width: 100%; height: 100%;
-            pointer-events: none; display: flex; flex-direction: column;
-            justify-content: space-between; padding: 20px; box-sizing: border-box; color: white;
-        }
-        .level-info { font-size: 28px; font-weight: bold; }
-        .knives-left { display: flex; flex-direction: column-reverse; gap: 8px; }
-        .knife-icon { font-size: 24px; opacity: 0.2; }
-        .knife-icon.active { opacity: 1; filter: drop-shadow(0 0 5px gold); }
-        #game-over {
-            position: absolute; top: 0; left: 0; width: 100%; height: 100%;
-            background: rgba(0,0,0,0.9); display: none; flex-direction: column;
-            justify-content: center; align-items: center; color: white; z-index: 10;
-        }
-        button {
-            margin-top: 20px; padding: 15px 40px; background: #f1c40f;
-            border: none; color: #2c3e50; font-size: 20px; font-weight: bold;
-            cursor: pointer; border-radius: 50px; pointer-events: auto;
-        }
+        body { background: #111; display: flex; justify-content: center; align-items: center; height: 100vh; margin: 0; overflow: hidden; color: white; font-family: Arial, sans-serif; }
+        canvas { background: #222; border: 4px solid #444; border-radius: 8px; box-shadow: 0 0 20px rgba(0,0,0,0.5); cursor: none; }
+        #stats { position: absolute; top: 10px; left: 10px; pointer-events: none; }
     </style>
 </head>
 <body>
 
-<div id="game-container">
-    <canvas id="gameCanvas"></canvas>
-    <div id="ui-layer">
-        <div class="level-info">LVL: <span id="levelNum">1</span></div>
-        <div class="knives-left" id="knivesCounter"></div>
-    </div>
-    <div id="game-over">
-        <h1>GAME OVER</h1>
-        <p>Score: <span id="finalScore">0</span></p>
-        <button onclick="initGame()">RESTART</button>
-    </div>
+<div id="stats">
+    <div>Счет: <span id="score">0</span></div>
 </div>
+<canvas id="gameCanvas"></canvas>
 
 <script>
-    const canvas = document.getElementById('gameCanvas');
-    const ctx = canvas.getContext('2d');
-    canvas.width = 450;
-    canvas.height = 700;
+const canvas = document.getElementById("gameCanvas");
+const ctx = canvas.getContext("2d");
+const scoreEl = document.getElementById("score");
 
-    let gameState = {
-        isRunning: false,
-        level: 1,
-        score: 0,
-        knivesRemaining: 0
-    };
+// Настройки графики
+canvas.width = 600;
+canvas.height = 400;
 
-    const target = {
-        x: canvas.width / 2,
-        y: 220,
-        radius: 90,
-        rotation: 0,
-        speed: 0.03,
-        stuckKnives: [], // Храним углы
-        shake: 0
-    };
+// Параметры игры
+let score = 0;
+const ballRadius = 8;
+const paddleHeight = 12;
+const paddleWidth = 100;
 
-    const knife = {
-        startX: canvas.width / 2,
-        startY: canvas.height - 120,
-        x: canvas.width / 2,
-        y: canvas.height - 120,
-        w: 12,
-        h: 80,
-        speed: 35,
-        isFlying: false
-    };
+// Состояние объектов
+let x = canvas.width / 2;
+let y = canvas.height - 30;
+let dx = 3;  // Скорость по X
+let dy = -3; // Скорость по Y
+let paddleX = (canvas.width - paddleWidth) / 2;
 
-    function initGame() {
-        gameState.level = 1;
-        gameState.score = 0;
-        setupLevel(1);
-        gameState.isRunning = true;
-        document.getElementById('game-over').style.display = 'none';
-        requestAnimationFrame(gameLoop);
+// Настройка блоков (кирпичей)
+const brickRowCount = 5;
+const brickColumnCount = 7;
+const brickWidth = 70;
+const brickHeight = 20;
+const brickPadding = 10;
+const brickOffsetTop = 40;
+const brickOffsetLeft = 25;
+
+const bricks = [];
+for (let c = 0; c < brickColumnCount; c++) {
+    bricks[c] = [];
+    for (let r = 0; r < brickRowCount; r++) {
+        bricks[c][r] = { x: 0, y: 0, status: 1 };
     }
+}
 
-    function setupLevel(lvl) {
-        gameState.knivesRemaining = 5 + lvl;
-        target.stuckKnives = [];
-        let baseSpeed = 0.02 + (lvl * 0.005);
-        target.speed = (lvl % 2 === 0) ? -baseSpeed : baseSpeed;
-        updateUI();
+// Слушатель движения мыши
+document.addEventListener("mousemove", (e) => {
+    const relativeX = e.clientX - canvas.offsetLeft;
+    if (relativeX > 0 && relativeX < canvas.width) {
+        paddleX = relativeX - paddleWidth / 2;
     }
+});
 
-    function update() {
-        if (!gameState.isRunning) return;
-
-        target.rotation += target.speed;
-        if (target.shake > 0) target.shake -= 0.5;
-
-        if (knife.isFlying) {
-            knife.y -= knife.speed;
-            // Проверка столкновения с нижней точкой бревна
-            if (knife.y <= target.y + target.radius) {
-                processHit();
+function collisionDetection() {
+    for (let c = 0; c < brickColumnCount; c++) {
+        for (let r = 0; r < brickRowCount; r++) {
+            const b = bricks[c][r];
+            if (b.status === 1) {
+                if (x > b.x && x < b.x + brickWidth && y > b.y && y < b.y + brickHeight) {
+                    dy = -dy;
+                    b.status = 0;
+                    score++;
+                    scoreEl.innerText = score;
+                    
+                    if (score === brickRowCount * brickColumnCount) {
+                        alert("ПОБЕДА! ВЫ КРУТОЙ!");
+                        document.location.reload();
+                    }
+                }
             }
         }
     }
+}
 
-    function processHit() {
-        knife.isFlying = false;
+function drawBall() {
+    ctx.beginPath();
+    ctx.arc(x, y, ballRadius, 0, Math.PI * 2);
+    ctx.fillStyle = "#00FFDD";
+    ctx.fill();
+    ctx.closePath();
+}
 
-Никита, [13.01.2026 10:15]
-// ВАЖНО: Вычисляем угол входа. 
-        // Нож летит снизу (это 90 градусов или Math.PI/2 относительно центра).
-        // Чтобы зафиксировать его на крутящемся бревне, вычитаем текущий поворот бревна.
-        let hitAngle = (Math.PI / 2) - target.rotation;
+function drawPaddle() {
+    ctx.beginPath();
+    ctx.rect(paddleX, canvas.height - paddleHeight - 10, paddleWidth, paddleHeight);
+    ctx.fillStyle = "#FFFFFF";
+    ctx.fill();
+    ctx.closePath();
+}
 
-        // Проверка на столкновение с другими ножами
-        const hitZone = 0.22; 
-        for (let angle of target.stuckKnives) {
-            let diff = Math.abs(normalize(angle) - normalize(hitAngle));
-            if (diff < hitZone || diff > (Math.PI * 2 - hitZone)) {
-                gameOver();
-                return;
+function drawBricks() {
+    for (let c = 0; c < brickColumnCount; c++) {
+        for (let r = 0; r < brickRowCount; r++) {
+            if (bricks[c][r].status === 1) {
+                const brickX = c * (brickWidth + brickPadding) + brickOffsetLeft;
+                const brickY = r * (brickHeight + brickPadding) + brickOffsetTop;
+                bricks[c][r].x = brickX;
+                bricks[c][r].y = brickY;
+                ctx.beginPath();
+                ctx.rect(brickX, brickY, brickWidth, brickHeight);
+                ctx.fillStyle = hsl(${r * 40}, 70%, 50%); // Разные цвета рядов
+                ctx.fill();
+                ctx.closePath();
             }
         }
-
-        // Успешный удар
-        target.stuckKnives.push(hitAngle);
-        target.shake = 8;
-        gameState.score++;
-        gameState.knivesRemaining--;
-        updateUI();
-
-        if (gameState.knivesRemaining <= 0) {
-            setTimeout(() => {
-                gameState.level++;
-                setupLevel(gameState.level);
-            }, 100);
-        }
-        
-        knife.y = knife.startY;
     }
+}
 
-    function draw() {
-        ctx.clearRect(0, 0, canvas.width, canvas.height);
+function draw() {
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+    drawBricks();
+    drawBall();
+    drawPaddle();
+    collisionDetection();
 
-        // Рисуем бревно и ножи в нем
-        ctx.save();
-        ctx.translate(target.x, target.y + (target.shake ? Math.sin(Date.now()) * target.shake : 0));
-        
-        // Вращаем ВСЁ бревно вместе с вонзенными ножами
-        ctx.save();
-        ctx.rotate(target.rotation);
+    // Отскоки от стен
+    if (x + dx > canvas.width - ballRadius || x + dx < ballRadius) {
 
-        // Рисуем само дерево
-        ctx.beginPath();
-        ctx.arc(0, 0, target.radius, 0, Math.PI * 2);
-        ctx.fillStyle = '#8b4513';
-        ctx.fill();
-        ctx.strokeStyle = '#5d2e0a';
-        ctx.lineWidth = 8;
-        ctx.stroke();
-
-        // Рисуем вонзенные ножи
-        target.stuckKnives.forEach(angle => {
-            ctx.save();
-            ctx.rotate(angle); // Поворачиваем к точке удара
-            ctx.translate(0, target.radius); // Сдвигаем к краю
-            drawKnifeShape(true); // Рисуем вонзенным (лезвием внутрь)
-            ctx.restore();
-        });
-        ctx.restore();
-        ctx.restore();
-
-        // Рисуем летящий или готовый нож (всегда снизу по центру)
-        if (!knife.isFlying || knife.y > target.y) {
-            ctx.save();
-            ctx.translate(knife.x, knife.y);
-            drawKnifeShape(false); // Рисуем летящим (лезвием вверх)
-            ctx.restore();
+Никита, [13.01.2026 11:00]
+dx = -dx;
+    }
+    if (y + dy < ballRadius) {
+        dy = -dy;
+    } else if (y + dy > canvas.height - ballRadius - 10) {
+        // Проверка касания платформы
+        if (x > paddleX && x < paddleX + paddleWidth) {
+            dy = -dy;
+            // Добавим немного ускорения для азарта
+            dx *= 1.05;
+            dy *= 1.05;
+        } else {
+            alert("ИГРА ОКОНЧЕНА");
+            document.location.reload();
+            return;
         }
     }
 
-    // Универсальная функция отрисовки ножа
-    function drawKnifeShape(isStuck) {
-        ctx.save();
-        if (!isStuck) {
-            // Если нож летит, разворачиваем его острием вверх
-            ctx.rotate(Math.PI);
-        }
-        // Теперь в обеих ситуациях рисуем нож одинаково:
-        // Острие направлено ВНИЗ относительно локальных координат
-        
-        // Лезвие
-        ctx.fillStyle = '#ecf0f1';
-        ctx.beginPath();
-        ctx.moveTo(-6, 0);
-        ctx.lineTo(6, 0);
-        ctx.lineTo(0, 50); // Острие
-        ctx.fill();
+    x += dx;
+    y += dy;
+    requestAnimationFrame(draw);
+}
 
-        // Рукоятка
-        ctx.fillStyle = '#d35400';
-        ctx.fillRect(-7, -25, 14, 25);
-        ctx.restore();
-    }
-
-    function gameLoop() {
-        update();
-        draw();
-        if (gameState.isRunning) requestAnimationFrame(gameLoop);
-    }
-
-    function gameOver() {
-        gameState.isRunning = false;
-        document.getElementById('finalScore').textContent = gameState.score;
-        document.getElementById('game-over').style.display = 'flex';
-    }
-
-    function updateUI() {
-        document.getElementById('levelNum').textContent = gameState.level;
-        const container = document.getElementById('knivesCounter');
-        container.innerHTML = '';
-        for (let i = 0; i < gameState.knivesRemaining; i++) {
-            const div = document.createElement('div');
-            div.className = 'knife-icon active';
-            div.innerHTML = '🗡️';
-            container.appendChild(div);
-        }
-    }
-
-    function normalize(a) {
-        a = a % (Math.PI * 2);
-        if (a < 0) a += Math.PI * 2;
-        return a;
-    }
-
-Никита, [13.01.2026 10:15]
-const startThrow = (e) => {
-        if (e.cancelable) e.preventDefault();
-        if (!knife.isFlying && gameState.isRunning) {
-            knife.isFlying = true;
-        }
-    };
-
-    canvas.addEventListener('mousedown', startThrow);
-    canvas.addEventListener('touchstart', startThrow, {passive: false});
-
-    initGame();
+draw();
 </script>
 </body>
 </html>
