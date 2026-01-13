@@ -1,9 +1,10 @@
+Никита, [13.01.2026 10:15]
 <!DOCTYPE html>
 <html lang="ru">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Knife Hit - Perfect Physics</title>
+    <title>Knife Hit - Исправленная физика</title>
     <style>
         body {
             margin: 0; padding: 0; background-color: #1a1a1a;
@@ -20,7 +21,7 @@
         }
         .level-info { font-size: 28px; font-weight: bold; }
         .knives-left { display: flex; flex-direction: column-reverse; gap: 8px; }
-        .knife-icon { font-size: 24px; opacity: 0.2; transition: 0.3s; }
+        .knife-icon { font-size: 24px; opacity: 0.2; }
         .knife-icon.active { opacity: 1; filter: drop-shadow(0 0 5px gold); }
         #game-over {
             position: absolute; top: 0; left: 0; width: 100%; height: 100%;
@@ -68,11 +69,13 @@
         radius: 90,
         rotation: 0,
         speed: 0.03,
-        stuckKnives: [], // Массив относительных углов
+        stuckKnives: [], // Храним углы
         shake: 0
     };
 
     const knife = {
+        startX: canvas.width / 2,
+        startY: canvas.height - 120,
         x: canvas.width / 2,
         y: canvas.height - 120,
         w: 12,
@@ -93,24 +96,20 @@
     function setupLevel(lvl) {
         gameState.knivesRemaining = 5 + lvl;
         target.stuckKnives = [];
-        target.speed = 0.02 + (lvl * 0.01);
-        if (lvl % 2 === 0) target.speed *= -1;
+        let baseSpeed = 0.02 + (lvl * 0.005);
+        target.speed = (lvl % 2 === 0) ? -baseSpeed : baseSpeed;
         updateUI();
     }
 
     function update() {
         if (!gameState.isRunning) return;
 
-        // Вращаем мишень
         target.rotation += target.speed;
-        
-        // Затухание тряски
         if (target.shake > 0) target.shake -= 0.5;
 
         if (knife.isFlying) {
             knife.y -= knife.speed;
-
-            // Проверка касания нижней точки мишени
+            // Проверка столкновения с нижней точкой бревна
             if (knife.y <= target.y + target.radius) {
                 processHit();
             }
@@ -119,15 +118,15 @@
 
     function processHit() {
         knife.isFlying = false;
-// ВЫЧИСЛЕНИЕ УГЛА:
-        // Нам нужно знать, под каким углом относительно ЦЕНТРА мишени сейчас находится 
-        // точка "6 часов" (низ мишени), учитывая текущий поворот мишени.
-        // В Canvas PI/2 — это низ. Мы вычитаем текущий поворот мишени, чтобы получить 
-        // "локальный" угол для этой точки.
+
+Никита, [13.01.2026 10:15]
+// ВАЖНО: Вычисляем угол входа. 
+        // Нож летит снизу (это 90 градусов или Math.PI/2 относительно центра).
+        // Чтобы зафиксировать его на крутящемся бревне, вычитаем текущий поворот бревна.
         let hitAngle = (Math.PI / 2) - target.rotation;
 
-        // Проверка столкновения с другими ножами
-        const hitZone = 0.25; // Ширина ножа в радианах
+        // Проверка на столкновение с другими ножами
+        const hitZone = 0.22; 
         for (let angle of target.stuckKnives) {
             let diff = Math.abs(normalize(angle) - normalize(hitAngle));
             if (diff < hitZone || diff > (Math.PI * 2 - hitZone)) {
@@ -136,9 +135,9 @@
             }
         }
 
-        // Успешное попадание
+        // Успешный удар
         target.stuckKnives.push(hitAngle);
-        target.shake = 10;
+        target.shake = 8;
         gameState.score++;
         gameState.knivesRemaining--;
         updateUI();
@@ -147,72 +146,74 @@
             setTimeout(() => {
                 gameState.level++;
                 setupLevel(gameState.level);
-            }, 150);
+            }, 100);
         }
         
-        knife.y = canvas.height - 120;
+        knife.y = knife.startY;
     }
 
     function draw() {
         ctx.clearRect(0, 0, canvas.width, canvas.height);
 
-        // 1. Рисуем мишень
+        // Рисуем бревно и ножи в нем
         ctx.save();
         ctx.translate(target.x, target.y + (target.shake ? Math.sin(Date.now()) * target.shake : 0));
         
-        // Вращаем всё содержимое мишени (и дерево, и ножи)
+        // Вращаем ВСЁ бревно вместе с вонзенными ножами
+        ctx.save();
         ctx.rotate(target.rotation);
 
-        // Рисуем бревно
+        // Рисуем само дерево
         ctx.beginPath();
         ctx.arc(0, 0, target.radius, 0, Math.PI * 2);
         ctx.fillStyle = '#8b4513';
         ctx.fill();
         ctx.strokeStyle = '#5d2e0a';
-        ctx.lineWidth = 10;
-        ctx.stroke();
-        
-        // Кольца на дереве
-        ctx.beginPath();
-        ctx.arc(0, 0, target.radius - 20, 0, Math.PI * 2);
-        ctx.strokeStyle = 'rgba(0,0,0,0.1)';
+        ctx.lineWidth = 8;
         ctx.stroke();
 
-        // 2. Рисуем воткнутые ножи
+        // Рисуем вонзенные ножи
         target.stuckKnives.forEach(angle => {
             ctx.save();
-            // Поворачиваем нож на его сохраненный угол относительно мишени
-            ctx.rotate(angle);
-            // Сдвигаем к краю мишени
-            ctx.translate(0, target.radius);
-            drawKnifeGraphic();
+            ctx.rotate(angle); // Поворачиваем к точке удара
+            ctx.translate(0, target.radius); // Сдвигаем к краю
+            drawKnifeShape(true); // Рисуем вонзенным (лезвием внутрь)
             ctx.restore();
         });
-
+        ctx.restore();
         ctx.restore();
 
-        // 3. Рисуем нож игрока (летящий или готовый)
+        // Рисуем летящий или готовый нож (всегда снизу по центру)
         if (!knife.isFlying || knife.y > target.y) {
             ctx.save();
             ctx.translate(knife.x, knife.y);
-            // Нож игрока всегда направлен вверх
-            ctx.rotate(Math.PI); 
-            drawKnifeGraphic();
+            drawKnifeShape(false); // Рисуем летящим (лезвием вверх)
             ctx.restore();
         }
     }
 
-    function drawKnifeGraphic() {
+    // Универсальная функция отрисовки ножа
+    function drawKnifeShape(isStuck) {
+        ctx.save();
+        if (!isStuck) {
+            // Если нож летит, разворачиваем его острием вверх
+            ctx.rotate(Math.PI);
+        }
+        // Теперь в обеих ситуациях рисуем нож одинаково:
+        // Острие направлено ВНИЗ относительно локальных координат
+        
         // Лезвие
-        ctx.fillStyle = '#bdc3c7';
+        ctx.fillStyle = '#ecf0f1';
         ctx.beginPath();
         ctx.moveTo(-6, 0);
         ctx.lineTo(6, 0);
-        ctx.lineTo(0, 60);
+        ctx.lineTo(0, 50); // Острие
         ctx.fill();
+
         // Рукоятка
-        ctx.fillStyle = '#e67e22';
-        ctx.fillRect(-6, -20, 12, 25);
+        ctx.fillStyle = '#d35400';
+        ctx.fillRect(-7, -25, 14, 25);
+        ctx.restore();
     }
 
     function gameLoop() {
@@ -231,7 +232,7 @@
         document.getElementById('levelNum').textContent = gameState.level;
         const container = document.getElementById('knivesCounter');
         container.innerHTML = '';
-        for (let i = 0; i < gameState.knivesRemaining + (knife.isFlying ? 1 : 0); i++) {
+        for (let i = 0; i < gameState.knivesRemaining; i++) {
             const div = document.createElement('div');
             div.className = 'knife-icon active';
             div.innerHTML = '🗡️';
@@ -244,6 +245,8 @@
         if (a < 0) a += Math.PI * 2;
         return a;
     }
+
+Никита, [13.01.2026 10:15]
 const startThrow = (e) => {
         if (e.cancelable) e.preventDefault();
         if (!knife.isFlying && gameState.isRunning) {
