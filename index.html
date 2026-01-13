@@ -2,18 +2,32 @@
 <html lang="ru">
 <head>
     <meta charset="UTF-8">
-    <title>Block Buster Prototype</title>
+    <title>Block Buster - Исправленная версия</title>
     <style>
-        body { background: #111; display: flex; justify-content: center; align-items: center; height: 100vh; margin: 0; overflow: hidden; color: white; font-family: Arial, sans-serif; }
-        canvas { background: #222; border: 4px solid #444; border-radius: 8px; box-shadow: 0 0 20px rgba(0,0,0,0.5); cursor: none; }
-        #stats { position: absolute; top: 10px; left: 10px; pointer-events: none; }
+        body { 
+            background: #1a1a1a; 
+            display: flex; 
+            flex-direction: column;
+            justify-content: center; 
+            align-items: center; 
+            height: 100vh; 
+            margin: 0; 
+            color: white; 
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+        }
+        canvas { 
+            background: #000; 
+            border: 3px solid #333; 
+            border-radius: 5px; 
+            box-shadow: 0 0 30px rgba(0,255,221,0.2);
+            cursor: crosshair;
+        }
+        .info { margin-bottom: 10px; font-size: 20px; }
     </style>
 </head>
 <body>
 
-<div id="stats">
-    <div>Счет: <span id="score">0</span></div>
-</div>
+<div class="info">Счет: <span id="score">0</span></div>
 <canvas id="gameCanvas"></canvas>
 
 <script>
@@ -21,31 +35,32 @@ const canvas = document.getElementById("gameCanvas");
 const ctx = canvas.getContext("2d");
 const scoreEl = document.getElementById("score");
 
-// Настройки графики
 canvas.width = 600;
 canvas.height = 400;
 
-// Параметры игры
 let score = 0;
-const ballRadius = 8;
-const paddleHeight = 12;
-const paddleWidth = 100;
+let gameRunning = false; // Игра стоит на паузе до клика
 
-// Состояние объектов
+// Параметры мяча
+const ballRadius = 8;
 let x = canvas.width / 2;
 let y = canvas.height - 30;
-let dx = 3;  // Скорость по X
-let dy = -3; // Скорость по Y
+let dx = 4;
+let dy = -4;
+
+// Платформа
+const paddleHeight = 10;
+const paddleWidth = 100;
 let paddleX = (canvas.width - paddleWidth) / 2;
 
-// Настройка блоков (кирпичей)
+// Блоки
 const brickRowCount = 5;
 const brickColumnCount = 7;
-const brickWidth = 70;
+const brickWidth = 75;
 const brickHeight = 20;
-const brickPadding = 10;
-const brickOffsetTop = 40;
-const brickOffsetLeft = 25;
+const brickPadding = 5;
+const brickOffsetTop = 50;
+const brickOffsetLeft = 30;
 
 const bricks = [];
 for (let c = 0; c < brickColumnCount; c++) {
@@ -55,11 +70,20 @@ for (let c = 0; c < brickColumnCount; c++) {
     }
 }
 
-// Слушатель движения мыши
+// Управление
 document.addEventListener("mousemove", (e) => {
-    const relativeX = e.clientX - canvas.offsetLeft;
+    const rect = canvas.getBoundingClientRect();
+    const relativeX = e.clientX - rect.left;
     if (relativeX > 0 && relativeX < canvas.width) {
         paddleX = relativeX - paddleWidth / 2;
+    }
+});
+
+// Старт по клику
+canvas.addEventListener("click", () => {
+    if (!gameRunning) {
+        gameRunning = true;
+        draw();
     }
 });
 
@@ -73,9 +97,8 @@ function collisionDetection() {
                     b.status = 0;
                     score++;
                     scoreEl.innerText = score;
-                    
                     if (score === brickRowCount * brickColumnCount) {
-                        alert("ПОБЕДА! ВЫ КРУТОЙ!");
+                        alert("ПОБЕДА!");
                         document.location.reload();
                     }
                 }
@@ -94,8 +117,8 @@ function drawBall() {
 
 function drawPaddle() {
     ctx.beginPath();
-    ctx.rect(paddleX, canvas.height - paddleHeight - 10, paddleWidth, paddleHeight);
-    ctx.fillStyle = "#FFFFFF";
+    ctx.rect(paddleX, canvas.height - paddleHeight - 5, paddleWidth, paddleHeight);
+    ctx.fillStyle = "#fff";
     ctx.fill();
     ctx.closePath();
 }
@@ -108,38 +131,34 @@ function drawBricks() {
                 const brickY = r * (brickHeight + brickPadding) + brickOffsetTop;
                 bricks[c][r].x = brickX;
                 bricks[c][r].y = brickY;
-                ctx.beginPath();
-                ctx.rect(brickX, brickY, brickWidth, brickHeight);
-                ctx.fillStyle = hsl(${r * 40}, 70%, 50%); // Разные цвета рядов
-                ctx.fill();
-                ctx.closePath();
+                ctx.fillStyle = hsl(${c * 50}, 70%, 50%);
+                ctx.fillRect(brickX, brickY, brickWidth, brickHeight);
             }
         }
     }
 }
 
+function showStartMessage() {
+    ctx.fillStyle = "white";
+    ctx.font = "24px Arial";
+    ctx.textAlign = "center";
+    ctx.fillText("КЛИКНИ, ЧТОБЫ НАЧАТЬ", canvas.width / 2, canvas.height / 2);
+}
+
 function draw() {
-    ctx.clearRect(0, 0, canvas.width, canvas.height);
+    if (!gameRunning) return;
+ctx.clearRect(0, 0, canvas.width, canvas.height);
     drawBricks();
     drawBall();
     drawPaddle();
     collisionDetection();
 
-    // Отскоки от стен
-    if (x + dx > canvas.width - ballRadius || x + dx < ballRadius) {
-
-Никита, [13.01.2026 11:00]
-dx = -dx;
-    }
-    if (y + dy < ballRadius) {
-        dy = -dy;
-    } else if (y + dy > canvas.height - ballRadius - 10) {
-        // Проверка касания платформы
+    // Стенки
+    if (x + dx > canvas.width - ballRadius || x + dx < ballRadius) dx = -dx;
+    if (y + dy < ballRadius) dy = -dy;
+    else if (y + dy > canvas.height - ballRadius - 5) {
         if (x > paddleX && x < paddleX + paddleWidth) {
             dy = -dy;
-            // Добавим немного ускорения для азарта
-            dx *= 1.05;
-            dy *= 1.05;
         } else {
             alert("ИГРА ОКОНЧЕНА");
             document.location.reload();
@@ -152,7 +171,8 @@ dx = -dx;
     requestAnimationFrame(draw);
 }
 
-draw();
+// Показываем начальный экран
+showStartMessage();
 </script>
 </body>
 </html>
