@@ -1,117 +1,234 @@
 <!DOCTYPE html>
-<html>
+<html lang="ru">
 <head>
     <meta charset="UTF-8">
-    <title>Block Buster Fix</title>
+    <title>Арканоид - Прототип с рестартом</title>
     <style>
-        body { background: #222; color: #fff; text-align: center; font-family: sans-serif; }
-        canvas { background: #000; border: 2px solid #555; display: block; margin: 20px auto; }
-        button { padding: 10px 20px; font-size: 18px; cursor: pointer; background: #00FFDD; border: none; border-radius: 5px; }
+        body { 
+            background: #222; 
+            color: #fff; 
+            text-align: center; 
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            margin-top: 20px;
+        }
+        #game-container {
+            position: relative;
+            width: 600px;
+            height: 400px;
+        }
+        canvas { 
+            background: #000; 
+            border: 3px solid #444; 
+            display: block; 
+            cursor: none; /* Скрываем курсор над полем */
+        }
+        /* Стили для экранов меню */
+        .overlay {
+            position: absolute;
+            top: 0; left: 0; width: 100%; height: 100%;
+            background: rgba(0,0,0,0.8);
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            display: none; /* Скрыты по умолчанию */
+        }
+        .overlay h2 { margin-bottom: 20px; font-size: 32px; color: #00FFDD; }
+        .btn {
+            padding: 15px 30px;
+            font-size: 20px;
+            cursor: pointer;
+            background: #FF3366;
+            color: white;
+            border: none;
+            border-radius: 5px;
+            transition: background 0.2s;
+        }
+        .btn:hover { background: #ff6688; }
+        #startScreen { display: flex; } /* Показываем старт сразу */
     </style>
 </head>
 <body>
 
     <h2>Счет: <span id="score">0</span></h2>
-    <canvas id="game" width="600" height="400"></canvas>
-    <button onclick="startGame()">ИГРАТЬ</button>
+    
+    <div id="game-container">
+        <canvas id="gameCanvas" width="600" height="400"></canvas>
+        
+        <div id="startScreen" class="overlay">
+             <button class="btn" onclick="startGame()">ИГРАТЬ</button>
+        </div>
+
+        <div id="endScreen" class="overlay">
+            <h2 id="endMessage">ИГРА ОКОНЧЕНА</h2>
+            <button class="btn" onclick="restartGame()">Начать заново</button>
+        </div>
+    </div>
 
 <script>
-    const canvas = document.getElementById("game");
+    const canvas = document.getElementById("gameCanvas");
     const ctx = canvas.getContext("2d");
     const scoreEl = document.getElementById("score");
+    const startScreen = document.getElementById("startScreen");
+    const endScreen = document.getElementById("endScreen");
+    const endMessage = document.getElementById("endMessage");
 
-    let score = 0;
     let running = false;
+    let score = 0;
+    let animationId;
 
+    // --- Настройки игры ---
     // Мяч
-    let x = 300, y = 350;
-    let dx = 3, dy = -3;
+    let x, y, dx, dy;
     const ballRadius = 10;
+    const initialSpeed = 4;
 
     // Платформа
-    const pWidth = 100, pHeight = 10;
-    let pX = 250;
+    const pWidth = 100, pHeight = 12;
+    let pX;
 
     // Блоки
-    const bricks = [];
-    for(let c=0; c<6; c++) {
-        bricks[c] = [];
-        for(let r=0; r<4; r++) {
-            bricks[c][r] = { x: 0, y: 0, status: 1 };
+    const brickRowCount = 4;
+    const brickColumnCount = 6;
+    const brickW = 80, brickH = 25, brickPad = 10;
+    const brickOffsetTop = 40, brickOffsetLeft = 35;
+    let bricks = [];
+    const totalBricks = brickRowCount * brickColumnCount;
+
+    // --- Инициализация и сброс ---
+    function initVariables() {
+        x = canvas.width / 2;
+        y = canvas.height - 40;
+        dx = initialSpeed * (Math.random() > 0.5 ? 1 : -1); // Случайное направление старта
+        dy = -initialSpeed;
+        pX = (canvas.width - pWidth) / 2;
+        score = 0;
+        scoreEl.innerText = "0";
+        
+        // Создаем блоки заново
+        for(let c=0; c<brickColumnCount; c++) {
+            bricks[c] = [];
+            for(let r=0; r<brickRowCount; r++) {
+                bricks[c][r] = { x: 0, y: 0, status: 1 };
+            }
         }
     }
 
-    // Движение мыши
+    // --- Управление ---
     canvas.addEventListener("mousemove", (e) => {
+        if (!running) return;
         const rect = canvas.getBoundingClientRect();
-        pX = e.clientX - rect.left - pWidth/2;
-    });
-
-    function startGame() {
-        if (!running) {
-            running = true;
-            requestAnimationFrame(draw);
+        let relativeX = e.clientX - rect.left;
+        // Ограничиваем движение платформы стенками
+        if(relativeX > 0 && relativeX < canvas.width) {
+            pX = relativeX - pWidth / 2;
         }
+    });
+// --- Основные функции ---
+    function startGame() {
+        startScreen.style.display = "none";
+        initVariables();
+        running = true;
+        draw();
     }
 
+    function restartGame() {
+        endScreen.style.display = "none";
+        initVariables();
+        running = true;
+        draw();
+    }
+
+    function gameOver(isVictory) {
+        running = false;
+        cancelAnimationFrame(animationId); // Останавливаем цикл
+        if (isVictory) {
+            endMessage.innerText = "ПОБЕДА! Все блоки разбиты!";
+            endMessage.style.color = "#00FFDD";
+        } else {
+            endMessage.innerText = "Поражение. Мяч упущен.";
+            endMessage.style.color = "#FF3366";
+        }
+        endScreen.style.display = "flex";
+    }
+
+    // --- Отрисовка и логика ---
     function draw() {
         if (!running) return;
         ctx.clearRect(0, 0, canvas.width, canvas.height);
 
-        // Рисуем блоки
-        for(let c=0; c<6; c++) {
-            for(let r=0; r<4; r++) {
-                if(bricks[c][r].status === 1) {
-                    let bx = c*90 + 35;
-                    let by = r*30 + 50;
-                    bricks[c][r].x = bx;
-                    bricks[c][r].y = by;
-                    ctx.fillStyle = "#FF5555";
-                    ctx.fillRect(bx, by, 80, 20);
+        // Рисуем блоки и проверяем попадания
+        for(let c=0; c<brickColumnCount; c++) {
+            for(let r=0; r<brickRowCount; r++) {
+                let b = bricks[c][r];
+                if(b.status === 1) {
+                    let bx = c*(brickW+brickPad) + brickOffsetLeft;
+                    let by = r*(brickH+brickPad) + brickOffsetTop;
+                    b.x = bx;
+                    b.y = by;
+                    // Цвет зависит от ряда
+                    ctx.fillStyle = hsl(${r * 45 + 20}, 80%, 55%);
+                    ctx.fillRect(bx, by, brickW, brickH);
 
-                    // Проверка столкновения с блоком
-                    if(x > bx && x < bx+80 && y > by && y < by+20) {
+                    // Коллизия с блоком
+                    if(x + ballRadius > bx && x - ballRadius < bx + brickW && 
+                       y + ballRadius > by && y - ballRadius < by + brickH) {
                         dy = -dy;
-                        bricks[c][r].status = 0;
+                        b.status = 0;
                         score++;
                         scoreEl.innerText = score;
+                        // Проверка ПОБЕДЫ
+                        if(score === totalBricks) {
+                            gameOver(true);
+                            return; 
+                        }
                     }
                 }
             }
         }
 
         // Рисуем платформу
-        ctx.fillStyle = "#00FFDD";
-        ctx.fillRect(pX, canvas.height - 20, pWidth, pHeight);
+        ctx.fillStyle = "#fff";
+        ctx.fillRect(pX, canvas.height - pHeight - 10, pWidth, pHeight);
 
         // Рисуем мяч
         ctx.beginPath();
         ctx.arc(x, y, ballRadius, 0, Math.PI*2);
-        ctx.fillStyle = "#FFFFFF";
+        ctx.fillStyle = "#00FFDD";
         ctx.fill();
         ctx.closePath();
 
         // Физика стен
-        if(x + dx > canvas.width || x + dx < 0) dx = -dx;
-        if(y + dy < 0) dy = -dy;
-        else if(y + dy > canvas.height - 20) {
-            if(x > pX && x < pX + pWidth) dy = -dy;
+        if(x + dx > canvas.width - ballRadius || x + dx < ballRadius) dx = -dx;
+        if(y + dy < ballRadius) dy = -dy;
+        
+        // Физика пола и платформы
+        else if(y + dy > canvas.height - ballRadius - 10) {
+            // Если попали в платформу
+            if(x > pX && x < pX + pWidth) {
+                 dy = -dy;
+                 // Небольшое ускорение для интереса
+                 dx = dx * 1.05;
+                 dy = dy * 1.05;
+            }
+            // Если не попали - ПРОИГРЫШ
             else {
-                alert("ИГРА ОКОНЧЕНА!");
-                document.location.reload();
+                gameOver(false);
                 return;
             }
         }
 
-        x += dx; y += dy;
-        requestAnimationFrame(draw);
+        x += dx;
+        y += dy;
+        animationId = requestAnimationFrame(draw);
     }
 
-    // Отрисовать начальный кадр сразу
-    ctx.fillStyle = "white";
-    ctx.font = "20px Arial";
-    ctx.textAlign = "center";
-    ctx.fillText("Нажми кнопку START ниже", 300, 200);
+    // Рисуем фон один раз при загрузке, чтобы не было черного квадрата
+    ctx.fillStyle = '#111';
+    ctx.fillRect(0,0,canvas.width, canvas.height);
 </script>
 </body>
 </html>
