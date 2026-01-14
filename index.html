@@ -1,142 +1,271 @@
-Никита, [14.01.2026 13:35]
 <!DOCTYPE html>
-<html>
+<html lang="ru">
 <head>
     <meta charset="UTF-8">
-    <title>3D Game with Mouse Look</title>
+    <title>Web FNAF Prototype</title>
     <style>
-        body { margin: 0; overflow: hidden; background-color: #000; font-family: sans-serif; }
-        #ui {
-            position: absolute; top: 10px; left: 10px;
-            color: white; background: rgba(0,0,0,0.5); padding: 10px;
-            pointer-events: none; /* Чтобы не мешало кликать */
+        body {
+            margin: 0;
+            overflow: hidden;
+            background-color: #000;
+            font-family: 'Courier New', Courier, monospace;
+            color: white;
+            user-select: none;
         }
-        #center {
-            position: absolute; top: 50%; left: 50%;
-            transform: translate(-50%, -50%);
-            color: white; font-weight: bold; font-size: 20px;
-            text-align: center;
+
+        /* --- ОФИС --- */
+        #office {
+            width: 100vw;
+            height: 100vh;
+            background-color: #333; /* Сюда вставишь картинку офиса */
+            background-size: cover;
+            position: relative;
+            transition: background-position 0.2s;
         }
+
+        /* ДВЕРИ */
+        .door {
+            position: absolute;
+            top: 0;
+            width: 15%;
+            height: 100%;
+            background-color: #111; /* Цвет темного прохода */
+            border: 5px solid #000;
+            z-index: 1;
+        }
+        #door-left { left: 0; }
+        #door-right { right: 0; }
+
+        /* Сами створки дверей (анимация закрытия) */
+        .metal-door {
+            width: 100%;
+            height: 0%; /* По умолчанию открыта (высота 0) */
+            background-color: #555;
+            background-image: repeating-linear-gradient(45deg, #444 0, #444 10px, #555 10px, #555 20px);
+            position: absolute;
+            top: 0;
+            transition: height 0.3s ease-in;
+            border-bottom: 5px solid red;
+        }
+        .closed { height: 100%; }
+
+        /* КНОПКИ ДВЕРЕЙ */
+        .door-btn {
+            position: absolute;
+            top: 50%;
+            width: 60px;
+            height: 60px;
+            background-color: red;
+            border-radius: 50%;
+            cursor: pointer;
+            border: 4px solid #fff;
+            z-index: 2;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: bold;
+            box-shadow: 0 0 10px red;
+        }
+        .door-btn:hover { filter: brightness(1.2); }
+        .door-btn.active { background-color: green; box-shadow: 0 0 10px green; }
+        
+        #btn-left { left: 16%; }
+        #btn-right { right: 16%; }
+
+        /* --- КАМЕРЫ --- */
+        #camera-toggle {
+            position: absolute;
+            bottom: 20px;
+            left: 50%;
+            transform: translateX(-50%);
+            width: 300px;
+            height: 40px;
+            background: rgba(255, 255, 255, 0.2);
+            border: 2px solid white;
+            color: white;
+            font-size: 20px;
+            cursor: pointer;
+            z-index: 10;
+        }
+        #camera-toggle:hover { background: rgba(255, 255, 255, 0.4); }
+
+        #camera-screen {
+            display: none; /* Скрыт по умолчанию */
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100vw;
+            height: 100vh;
+            background-color: #000;
+            z-index: 5;
+            border: 10px solid #333;
+            box-sizing: border-box;
+        }
+
+        #camera-view {
+            width: 100%;
+            height: 100%;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            font-size: 30px;
+            color: #ccc;
+            background-size: cover;
+            position: relative;
+        }
+
+        /* Эффект помех (Static) */
+        .static {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: url('https://media.giphy.com/media/3o7aD2e1E06Gehj0fY/giphy.gif'); /* ГИФКА ШУМА */
+            opacity: 0.1;
+            pointer-events: none;
+        }
+
+        /* КАРТА КАМЕР */
+        #map {
+            position: absolute;
+            bottom: 80px;
+            right: 20px;
+            width: 200px;
+            height: 150px;
+            border: 2px solid white;
+            background: rgba(0,0,0,0.7);
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 5px;
+            padding: 10px;
+        }
+
+        .cam-btn {
+            background: #333;
+            color: white;
+            border: 1px solid white;
+            cursor: pointer;
+        }
+        .cam-btn:hover { background: #555; }
+        .cam-btn.selected { background: green; }
+
     </style>
 </head>
 <body>
-    <div id="ui">WASD - Ходить, Пробел - Прыжок<br>Мышь - Поворот камеры</div>
-    <div id="center" id="msg">Нажми на экран, чтобы начать</div>
 
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
-    <script>
-        const scene = new THREE.Scene();
-        scene.background = new THREE.Color(0x87CEEB);
+    <div id="game-container">
+        <div id="office">
+            <div id="door-left" class="door">
+                <div id="metal-left" class="metal-door"></div>
+            </div>
+            <div id="btn-left" class="door-btn" onclick="toggleDoor('left')">DOOR</div>
 
-        const camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
-        const renderer = new THREE.WebGLRenderer({ antialias: true });
-        renderer.setSize(window.innerWidth, window.innerHeight);
-        document.body.appendChild(renderer.domElement);
+            <div id="door-right" class="door">
+                <div id="metal-right" class="metal-door"></div>
+            </div>
+            <div id="btn-right" class="door-btn" onclick="toggleDoor('right')">DOOR</div>
+        </div>
 
-        // Свет
-        const light = new THREE.DirectionalLight(0xffffff, 1);
-        light.position.set(5, 10, 5);
-        scene.add(light);
-        scene.add(new THREE.AmbientLight(0x404040));
+        <button id="camera-toggle" onclick="toggleMonitor()">Open/Close Monitor</button>
 
-        // Пол
-        const floor = new THREE.Mesh(
-            new THREE.PlaneGeometry(50, 50),
-            new THREE.MeshStandardMaterial({ color: 0x444444 })
-        );
-        floor.rotation.x = -Math.PI / 2;
-        scene.add(floor);
-
-        // Игрок
-        const player = new THREE.Mesh(
-            new THREE.BoxGeometry(1, 1, 1),
-            new THREE.MeshStandardMaterial({ color: 0xFF0000 })
-        );
-        player.position.y = 0.5;
-        scene.add(player);
-
-        // --- УПРАВЛЕНИЕ МЫШЬЮ ---
-        let yaw = 0;   // Поворот влево-вправо
-        let pitch = 0; // Поворот вверх-вниз
-        const mouseSensitivity = 0.002;
-
-        document.body.addEventListener('click', () => {
-            document.body.requestPointerLock();
-            document.getElementById('center').style.display = 'none';
-        });
-
-        document.addEventListener('mousemove', (e) => {
-            if (document.pointerLockElement === document.body) {
-                yaw -= e.movementX * mouseSensitivity;
-                pitch -= e.movementY * mouseSensitivity;
-                // Ограничиваем наклон камеры, чтобы не перевернуться
-                pitch = Math.max(-Math.PI/3, Math.min(Math.PI/4, pitch));
-            }
-        });
-
-        const keys = {};
-        let velocityY = 0;
-        let isGrounded = true;
-
-        window.addEventListener('keydown', (e) => keys[e.code] = true);
-        window.addEventListener('keyup', (e) => keys[e.code] = false);
-
-        function animate() {
-            requestAnimationFrame(animate);
-
-            // Направление движения относительно поворота камеры
-            const speed = 0.1;
-            if (keys['KeyW']) {
-                player.position.x -= Math.sin(yaw) * speed;
-                player.position.z -= Math.cos(yaw) * speed;
-            }
-            if (keys['KeyS']) {
-                player.position.x += Math.sin(yaw) * speed;
-                player.position.z += Math.cos(yaw) * speed;
-            }
-            if (keys['KeyA']) {
-                player.position.x -= Math.cos(yaw) * speed;
-                player.position.z += Math.sin(yaw) * speed;
-            }
-            if (keys['KeyD']) {
-                player.position.x += Math.cos(yaw) * speed;
-                player.position.z -= Math.sin(yaw) * speed;
-            }
-
-            // Прыжок
-            if (keys['Space'] && isGrounded) {
-                velocityY = 0.2;
-                isGrounded = false;
-            }
-
-            velocityY -= 0.01; 
-            player.position.y += velocityY;
-
-Никита, [14.01.2026 13:35]
-if (player.position.y <= 0.5) {
-                player.position.y = 0.5;
-                velocityY = 0;
-                isGrounded = true;
-            }
-
-            // --- ОБНОВЛЕНИЕ КАМЕРЫ ---
-            const dist = 8; // Дистанция от игрока
-            camera.position.x = player.position.x + Math.sin(yaw) * Math.cos(pitch) * dist;
-            camera.position.y = player.position.y + Math.sin(pitch) * dist + 2; // +2 для высоты
-            camera.position.z = player.position.z + Math.cos(yaw) * Math.cos(pitch) * dist;
+        <div id="camera-screen">
+            <div id="camera-view">
+                <span id="cam-label">CAM 1A - Stage</span>
+                <div class="static"></div>
+            </div>
             
-            camera.lookAt(player.position);
+            <div id="map">
+                <button class="cam-btn selected" onclick="switchCam('1A', this)">CAM 1A</button>
+                <button class="cam-btn" onclick="switchCam('1B', this)">CAM 1B</button>
+                <button class="cam-btn" onclick="switchCam('5', this)">CAM 5</button>
+                <button class="cam-btn" onclick="switchCam('2A', this)">CAM 2A</button>
+            </div>
+        </div>
+    </div>
 
-            renderer.render(scene, camera);
+    <script>
+        // Состояние игры
+        let isMonitorUp = false;
+        let currentCam = '1A';
+        
+        // Ссылки на картинки (СЮДА ВСТАВЛЯТЬ ССЫЛКИ ИЗ ГУГЛА)
+        const images = {
+            office: 'linear-gradient(to bottom, #222, #111)', // Замени на url('ссылка')
+            cam1A_empty: '#111', // Сцена пустая (цвет или url)
+            cam1A_freddy: 'radial-gradient(circle, #533 0%, #000 70%)', // Фредди на сцене
+            cam1B: '#222', 
+            cam5: '#1a1a1a', 
+            cam2A: '#0f0f0f'
+        };
+
+        // Логика дверей
+        function toggleDoor(side) {
+            const door = document.getElementById(`metal-${side}`);
+            const btn = document.getElementById(`btn-${side}`);
+            
+            // Проверяем, закрыта ли дверь (класс .closed)
+            if (door.classList.contains('closed')) {
+                door.classList.remove('closed'); // Открываем
+                btn.classList.remove('active');
+            } else {
+                door.classList.add('closed'); // Закрываем
+                btn.classList.add('active');
+            }
         }
 
-        animate();
+        // Логика планшета
+        function toggleMonitor() {
+            const screen = document.getElementById('camera-screen');
+            isMonitorUp = !isMonitorUp;
+            
+            if (isMonitorUp) {
+                screen.style.display = 'block';
+                updateCamView(); // Обновить картинку при открытии
+            } else {
+                screen.style.display = 'none';
+            }
+        }
 
-        window.addEventListener('resize', () => {
-            camera.aspect = window.innerWidth / window.innerHeight;
-            camera.updateProjectionMatrix();
-            renderer.setSize(window.innerWidth, window.innerHeight);
-        });
+        // Переключение камер
+        function switchCam(camName, btnElement) {
+            currentCam = camName;
+            
+            // Подсветка кнопок
+            document.querySelectorAll('.cam-btn').forEach(b => b.classList.remove('selected'));
+            btnElement.classList.add('selected');
+
+            updateCamView();
+        }
+
+        // Обновление вида камеры (Простой ИИ аниматроника)
+        function updateCamView() {
+            const view = document.getElementById('camera-view');
+            const label = document.getElementById('cam-label');
+
+            label.innerText = `CAM ${currentCam} - Signal...`;
+
+            // Логика картинок
+            if (currentCam === '1A') {
+                // Шанс 50/50 увидеть аниматроника на сцене
+                if (Math.random() > 0.5) {
+                    view.style.background = images.cam1A_freddy;
+                    label.innerText += " (DETECTED!)";
+                } else {
+                    view.style.background = images.cam1A_empty;
+                }
+            } else if (currentCam === '1B') {
+                view.style.background = images.cam1B;
+            } else if (currentCam === '5') {
+                view.style.background = images.cam5;
+            } else if (currentCam === '2A') {
+                view.style.background = images.cam2A;
+            }
+        }
+
+        // Устанавливаем фон офиса при загрузке
+        document.getElementById('office').style.background = images.office;
+
     </script>
 </body>
 </html>
