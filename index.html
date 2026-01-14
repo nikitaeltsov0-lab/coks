@@ -1,128 +1,147 @@
-Никита, [14.01.2026 14:31]
+Никита, [14.01.2026 14:35]
 <!DOCTYPE html>
 <html lang="ru">
 <head>
     <meta charset="UTF-8">
-    <title>FNAF Ultimate Web</title>
+    <title>FNAF Prototype Fixed</title>
     <style>
-        body { margin: 0; overflow: hidden; background: #000; font-family: sans-serif; }
-        
-        /* Основной экран офиса */
-        #game-view {
+        body { margin: 0; overflow: hidden; background: #000; font-family: Courier, monospace; }
+
+        /* ОФИС */
+        #office {
             width: 100vw;
             height: 100vh;
+            background-image: url('10926.webp'); /* Используем твой файл напрямую */
             background-size: cover;
             background-position: center;
             position: relative;
-            /* Твоя основная картинка */
-            background-image: url('https://p16-flow-sign-sg.cmlive.top/obj/flow-instance-sg/8254199990818967554?x-expires=1736944260&x-signature=8XmX9P4n9O9G9S9O9G9S9O9G9S0%3D');
         }
 
-        /* Металлические двери (настроены под проемы) */
-        .door {
+        /* ДВЕРИ (рисуем кодом, чтобы не зависеть от картинок) */
+        .door-frame {
             position: absolute;
-            top: 25%; /* Чтобы не закрывать полосатые косяки сверху */
-            height: 0%; /* Изначально открыты */
+            top: 15%;
             width: 20%;
-            background: #222;
-            background-image: linear-gradient(to right, #111, #333, #111);
-            border-bottom: 5px solid #000;
-            transition: height 0.3s ease-in-out;
+            height: 85%;
+            overflow: hidden;
             z-index: 5;
         }
-        #door-left { left: 0; }
-        #door-right { right: 0; }
-        .door.closed { height: 75%; }
+        #frame-left { left: 0; }
+        #frame-right { right: 0; }
 
-        /* Зоны для клика (невидимые кнопки поверх кнопок на картинке) */
-        .hotspot {
+        .door-visual {
+            width: 100%;
+            height: 0%; /* Открыта */
+            background: linear-gradient(to bottom, #444, #222);
+            border-bottom: 10px solid #111;
+            transition: height 0.3s ease-in-out;
+        }
+        .door-visual.closed { height: 100%; }
+
+        /* КНОПКИ (сделал их видимыми, чтобы ты точно мог нажать) */
+        .controls {
             position: absolute;
-            /* background: rgba(255, 0, 0, 0.3); /* Раскомментируй, чтобы увидеть, куда нажимать */
-            cursor: pointer;
+            top: 50%;
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
             z-index: 10;
         }
-        
-        /* Кнопка левой двери (над красным кружком) */
-        #btn-door-left { top: 48%; left: 8%; width: 50px; height: 50px; border-radius: 50%; }
-        
-        /* Кнопка правой двери (над красным кружком) */
-        #btn-door-right { top: 48%; right: 10%; width: 50px; height: 50px; border-radius: 50%; }
+        #ctrl-left { left: 21%; }
+        #ctrl-right { right: 21%; }
 
-        /* Кнопка планшета (белая полоса снизу) */
-        #btn-monitor { bottom: 2%; left: 25%; width: 50%; height: 40px; border: 2px solid rgba(255,255,255,0.3); }
+        .btn {
+            width: 40px;
+            height: 40px;
+            border: 3px solid #fff;
+            border-radius: 5px;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: bold;
+            color: white;
+            text-shadow: 1px 1px 2px #000;
+        }
+        .btn-door { background: #700; }
+        .btn-door.active { background: #f00; box-shadow: 0 0 15px #f00; }
 
-        /* ЭКРАН КАМЕР */
+        /* ПЛАНШЕТ */
+        #monitor-btn {
+            position: absolute;
+            bottom: 20px;
+            left: 50%;
+            transform: translateX(-50%);
+            width: 300px;
+            height: 40px;
+            background: rgba(255,255,255,0.2);
+            border: 2px solid #fff;
+            color: #fff;
+            cursor: pointer;
+            z-index: 100;
+        }
+
         #tablet {
             display: none;
             position: absolute;
             top: 0; left: 0; width: 100%; height: 100%;
-            background: #000; z-index: 20;
+            background: #111;
+            z-index: 200;
+            border: 10px solid #333;
+            box-sizing: border-box;
         }
-        #cam-image {
-            width: 100%; height: 100%;
-            background-size: cover; background-position: center;
-            display: flex; justify-content: center; align-items: center;
-        }
+
         .static {
             position: absolute; top: 0; left: 0; width: 100%; height: 100%;
             background: url('https://media.giphy.com/media/oEI9uWUicGLeE/giphy.gif');
             opacity: 0.1; pointer-events: none;
         }
-        #cam-ui {
-            position: absolute; bottom: 50px; right: 50px;
-            display: grid; grid-template-columns: 1fr 1fr; gap: 10px;
-        }
-        .cam-btn {
-            padding: 15px; background: #222; color: #fff; border: 2px solid #fff; cursor: pointer;
+
+        #cam-display {
+            width: 100%; height: 100%;
+            display: flex; align-items: center; justify-content: center;
+            color: white; font-size: 40px;
         }
     </style>
 </head>
 <body>
 
-<div id="game-view">
-    <div id="door-left" class="door"></div>
-    <div id="door-right" class="door"></div>
+<div id="office">
+    <div id="frame-left" class="door-frame"><div id="door-left" class="door-visual"></div></div>
+    <div id="frame-right" class="door-frame"><div id="door-right" class="door-visual"></div></div>
 
-    <div id="btn-door-left" class="hotspot" onclick="toggleDoor('left')"></div>
-    <div id="btn-door-right" class="hotspot" onclick="toggleDoor('right')"></div>
-    <div id="btn-monitor" class="hotspot" onclick="toggleMonitor()"></div>
+    <div id="ctrl-left" class="controls">
+        <div class="btn btn-door" onclick="toggleDoor('left', this)">D</div>
+    </div>
+
+    <div id="ctrl-right" class="controls">
+        <div class="btn btn-door" onclick="toggleDoor('right', this)">D</div>
+    </div>
+
+    <button id="monitor-btn" onclick="toggleTablet()">МОНИТОР</button>
 </div>
 
 <div id="tablet">
-    <div id="cam-image">
-        <h1 id="cam-name" style="color: white; font-family: monospace;">CAM 1A</h1>
-        <div class="static"></div>
-    </div>
-    <div id="cam-ui">
-        <button class="cam-btn" onclick="setCam('1A', 'https://i.ytimg.com/vi/1_8U_1M_p_k/maxresdefault.jpg')">CAM 1A</button>
-        <button class="cam-btn" onclick="setCam('1B', 'https://steamuserimages-a.akamaihd.net/ugc/938311655075193498/0867623BD0BA995F7E7B447A3B7E96F190D410B2/')">CAM 1B</button>
-        <button class="cam-btn" style="background: red;" onclick="toggleMonitor()">CLOSE</button>
-    </div>
+    <div class="static"></div>
+    <div id="cam-display">CAM 1A</div>
+    <button style="position:absolute; bottom:20px; right:20px; padding:20px;" onclick="toggleTablet()">ЗАКРЫТЬ</button>
 </div>
 
-Никита, [14.01.2026 14:31]
 <script>
-    // Логика дверей
-    function toggleDoor(side) {
+    function toggleDoor(side, btn) {
         const door = document.getElementById('door-' + side);
         door.classList.toggle('closed');
-        console.log('Дверь ' + side + ' изменена');
+        btn.classList.toggle('active');
     }
 
-    // Логика монитора
-    function toggleMonitor() {
+Никита, [14.01.2026 14:35]
+function toggleTablet() {
         const tablet = document.getElementById('tablet');
         if (tablet.style.display === 'block') {
             tablet.style.display = 'none';
         } else {
             tablet.style.display = 'block';
         }
-    }
-
-    // Переключение камер
-    function setCam(name, url) {
-        document.getElementById('cam-name').innerText = name;
-        document.getElementById('cam-image').style.backgroundImage = "url('" + url + "')";
     }
 </script>
 
