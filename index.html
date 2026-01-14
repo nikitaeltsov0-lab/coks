@@ -1,94 +1,93 @@
-=<!DOCTYPE html>
+Никита, [14.01.2026 14:22]
+<!DOCTYPE html>
 <html lang="ru">
 <head>
     <meta charset="UTF-8">
-    <title>Web FNAF Prototype</title>
+    <title>FNAF Web Prototype</title>
     <style>
         body {
             margin: 0;
             overflow: hidden;
             background-color: #000;
             font-family: 'Courier New', Courier, monospace;
-            color: white;
             user-select: none;
         }
 
-        /* --- ОФИС --- */
+        /* --- ОФИС (Твоя картинка) --- */
         #office {
             width: 100vw;
             height: 100vh;
-            background-color: #333; /* Сюда вставишь картинку офиса */
+            /* Ссылка на предоставленное тобой изображение */
+            background-image: url('https://share.google/jagFtXChAX1WcIQVchttp://googleusercontent.com/image_generation_content/0image_0.png');
             background-size: cover;
+            background-position: center;
             position: relative;
-            transition: background-position 0.2s;
         }
 
-        /* ДВЕРИ */
-        .door {
+        /* --- ЗОНЫ ДВЕРЕЙ (Контейнеры для анимации) --- */
+        /* Я настроил их расположение точно по проемам на твоей картинке */
+        .door-container {
             position: absolute;
-            top: 0;
-            width: 15%;
-            height: 100%;
-            background-color: #111; /* Цвет темного прохода */
-            border: 5px solid #000;
+            top: 26%; /* Начало двери под желто-черными полосами */
+            width: 19%;
+            height: 74%; /* До самого низа */
+            overflow: hidden;
             z-index: 1;
         }
-        #door-left { left: 0; }
-        #door-right { right: 0; }
+        #door-cont-left { left: 0; }
+        #door-cont-right { right: 0; }
 
-        /* Сами створки дверей (анимация закрытия) */
+        /* Сами металлические двери (Анимация) */
         .metal-door {
             width: 100%;
-            height: 0%; /* По умолчанию открыта (высота 0) */
-            background-color: #555;
-            background-image: repeating-linear-gradient(45deg, #444 0, #444 10px, #555 10px, #555 20px);
+            height: 0%; /* По умолчанию открыта */
+            background-color: #333;
+            /* Текстура металла */
+            background-image: repeating-linear-gradient(45deg, #222 0, #222 5px, #333 5px, #333 10px);
+            border-bottom: 4px solid #111;
+            transition: height 0.2s ease-in;
             position: absolute;
             top: 0;
-            transition: height 0.3s ease-in;
-            border-bottom: 5px solid red;
         }
+        /* Класс для закрытия */
         .closed { height: 100%; }
 
-        /* КНОПКИ ДВЕРЕЙ */
-        .door-btn {
-            position: absolute;
-            top: 50%;
-            width: 60px;
-            height: 60px;
-            background-color: red;
-            border-radius: 50%;
-            cursor: pointer;
-            border: 4px solid #fff;
-            z-index: 2;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            font-weight: bold;
-            box-shadow: 0 0 10px red;
-        }
-        .door-btn:hover { filter: brightness(1.2); }
-        .door-btn.active { background-color: green; box-shadow: 0 0 10px green; }
-        
-        #btn-left { left: 16%; }
-        #btn-right { right: 16%; }
 
-        /* --- КАМЕРЫ --- */
-        #camera-toggle {
+        /* --- НЕВИДИМЫЕ КНОПКИ (Клики поверх картинки) --- */
+        .click-zone {
             position: absolute;
-            bottom: 20px;
-            left: 50%;
-            transform: translateX(-50%);
-            width: 300px;
-            height: 40px;
-            background: rgba(255, 255, 255, 0.2);
-            border: 2px solid white;
-            color: white;
-            font-size: 20px;
+            /* background-color: rgba(255, 0, 0, 0.3); /* Раскомментируй, чтобы увидеть зоны клика для отладки */
             cursor: pointer;
             z-index: 10;
+            border-radius: 50%;
         }
-        #camera-toggle:hover { background: rgba(255, 255, 255, 0.4); }
+        
+        /* Настроил координаты точно над красными кнопками "DOOR" на картинке */
+        #btn-zone-left {
+            top: 51%;
+            left: 12.5%;
+            width: 55px;
+            height: 55px;
+        }
 
+        #btn-zone-right {
+            top: 51%;
+            right: 18%;
+            width: 55px;
+            height: 55px;
+        }
+
+        /* Зона клика для монитора (над кнопкой Open/Close Monitor) */
+        #monitor-zone {
+            bottom: 26.5%;
+            right: 4%;
+            width: 170px;
+            height: 35px;
+            border-radius: 5px;
+        }
+
+
+        /* --- ЭКРАН КАМЕР (Планшет) --- */
         #camera-screen {
             display: none; /* Скрыт по умолчанию */
             position: absolute;
@@ -97,8 +96,8 @@
             width: 100vw;
             height: 100vh;
             background-color: #000;
-            z-index: 5;
-            border: 10px solid #333;
+            z-index: 20; /* Поверх всего */
+            border: 8px solid #333;
             box-sizing: border-box;
         }
 
@@ -111,6 +110,7 @@
             font-size: 30px;
             color: #ccc;
             background-size: cover;
+            background-position: center;
             position: relative;
         }
 
@@ -121,34 +121,46 @@
             left: 0;
             width: 100%;
             height: 100%;
-            background: url('https://media.giphy.com/media/3o7aD2e1E06Gehj0fY/giphy.gif'); /* ГИФКА ШУМА */
-            opacity: 0.1;
+            /* Ссылка на гифку шума */
+            background: url('https://media.giphy.com/media/3o7aD2e1E06Gehj0fY/giphy.gif');
+            opacity: 0.15;
             pointer-events: none;
         }
 
-        /* КАРТА КАМЕР */
-        #map {
+        #cam-label {
             position: absolute;
-            bottom: 80px;
+            top: 20px;
+            left: 20px;
+            font-size: 24px;
+            background: rgba(0,0,0,0.5);
+            padding: 5px;
+        }
+
+Никита, [14.01.2026 14:22]
+/* КАРТА КАМЕР (Сделал похожей на ту, что на картинке) */
+        #map-ui {
+            position: absolute;
+            bottom: 20px;
             right: 20px;
-            width: 200px;
-            height: 150px;
-            border: 2px solid white;
-            background: rgba(0,0,0,0.7);
+            width: 250px;
+            background: rgba(0,0,0,0.8);
+            border: 2px solid #555;
+            padding: 10px;
             display: grid;
             grid-template-columns: 1fr 1fr;
             gap: 5px;
-            padding: 10px;
         }
 
         .cam-btn {
-            background: #333;
+            background: #222;
             color: white;
-            border: 1px solid white;
+            border: 1px solid #444;
             cursor: pointer;
+            padding: 10px;
+            font-family: inherit;
         }
-        .cam-btn:hover { background: #555; }
-        .cam-btn.selected { background: green; }
+        .cam-btn:hover { background: #333; }
+        .cam-btn.selected { background: #2a2; color: black; font-weight: bold;}
 
     </style>
 </head>
@@ -156,18 +168,20 @@
 
     <div id="game-container">
         <div id="office">
-            <div id="door-left" class="door">
+            <div id="door-cont-left" class="door-container">
                 <div id="metal-left" class="metal-door"></div>
             </div>
-            <div id="btn-left" class="door-btn" onclick="toggleDoor('left')">DOOR</div>
+            <div id="btn-zone-left" class="click-zone" onclick="toggleDoor('left')"></div>
 
-            <div id="door-right" class="door">
+
+            <div id="door-cont-right" class="door-container">
                 <div id="metal-right" class="metal-door"></div>
             </div>
-            <div id="btn-right" class="door-btn" onclick="toggleDoor('right')">DOOR</div>
+            <div id="btn-zone-right" class="click-zone" onclick="toggleDoor('right')"></div>
+            
+             <div id="monitor-zone" class="click-zone" onclick="toggleMonitor()"></div>
         </div>
 
-        <button id="camera-toggle" onclick="toggleMonitor()">Open/Close Monitor</button>
 
         <div id="camera-screen">
             <div id="camera-view">
@@ -175,43 +189,34 @@
                 <div class="static"></div>
             </div>
             
-            <div id="map">
+            <div id="map-ui">
                 <button class="cam-btn selected" onclick="switchCam('1A', this)">CAM 1A</button>
                 <button class="cam-btn" onclick="switchCam('1B', this)">CAM 1B</button>
-                <button class="cam-btn" onclick="switchCam('5', this)">CAM 5</button>
                 <button class="cam-btn" onclick="switchCam('2A', this)">CAM 2A</button>
+                <button class="cam-btn" onclick="switchCam('2B', this)">CAM 2B</button>
             </div>
         </div>
     </div>
 
     <script>
-        // Состояние игры
-        let isMonitorUp = false;
-        let currentCam = '1A';
-        
-        // Ссылки на картинки (СЮДА ВСТАВЛЯТЬ ССЫЛКИ ИЗ ГУГЛА)
-        const images = {
-            office: "url('https://abrakadabra.fun/uploads/posts/2022-02/1645799905_18-abrakadabra-fun-p-ofis-iz-fnaf-40.jpg')",
-            cam1A_empty: '#111', // Сцена пустая (цвет или url)
-            cam1A_freddy: 'radial-gradient(circle, #533 0%, #000 70%)', // Фредди на сцене
-            cam1B: '#222', 
-            cam5: '#1a1a1a', 
-            cam2A: '#0f0f0f'
+        // === НАСТРОЙКИ И ССЫЛКИ ===
+        // Ты прислал только офис, поэтому для камер я поставил заглушки (серый фон).
+        // Замени 'ЗАГЛУШКА' на реальные ссылки из Гугла, когда найдешь их.
+        const camImages = {
+            '1A': 'linear-gradient(45deg, #111, #222)', // Сцена
+            '1B': 'linear-gradient(45deg, #1a1a1a, #000)', // Столовая
+            '2A': 'linear-gradient(45deg, #050505, #151515)', // Коридор
+            '2B': '#000' // Угол
         };
 
-        // Логика дверей
+        let isMonitorUp = false;
+        let currentCam = '1A';
+
+        // Логика дверей (звуки можно добавить позже)
         function toggleDoor(side) {
-            const door = document.getElementById(`metal-${side}`);
-            const btn = document.getElementById(`btn-${side}`);
-            
-            // Проверяем, закрыта ли дверь (класс .closed)
-            if (door.classList.contains('closed')) {
-                door.classList.remove('closed'); // Открываем
-                btn.classList.remove('active');
-            } else {
-                door.classList.add('closed'); // Закрываем
-                btn.classList.add('active');
-            }
+            const door = document.getElementById(metal-${side});
+            // Просто переключаем класс .closed
+            door.classList.toggle('closed');
         }
 
         // Логика планшета
@@ -231,41 +236,33 @@
         function switchCam(camName, btnElement) {
             currentCam = camName;
             
-            // Подсветка кнопок
+            // Подсветка активной кнопки
             document.querySelectorAll('.cam-btn').forEach(b => b.classList.remove('selected'));
             btnElement.classList.add('selected');
 
             updateCamView();
         }
 
-        // Обновление вида камеры (Простой ИИ аниматроника)
+        // Обновление вида на экране
         function updateCamView() {
             const view = document.getElementById('camera-view');
             const label = document.getElementById('cam-label');
 
-            label.innerText = `CAM ${currentCam} - Signal...`;
-
-            // Логика картинок
-            if (currentCam === '1A') {
-                // Шанс 50/50 увидеть аниматроника на сцене
-                if (Math.random() > 0.5) {
-                    view.style.background = images.cam1A_freddy;
-                    label.innerText += " (DETECTED!)";
+Никита, [14.01.2026 14:22]
+label.innerText = CAM ${currentCam};
+            
+            // Ставим фон в зависимости от выбранной камеры
+            if (camImages[currentCam]) {
+                 // Если это градиент (заглушка)
+                if(camImages[currentCam].includes('gradient') || camImages[currentCam].startsWith('#')) {
+                     view.style.backgroundImage = 'none';
+                     view.style.background = camImages[currentCam];
                 } else {
-                    view.style.background = images.cam1A_empty;
+                     // Если это реальная картинка (url)
+                    view.style.backgroundImage = url('${camImages[currentCam]}');
                 }
-            } else if (currentCam === '1B') {
-                view.style.background = images.cam1B;
-            } else if (currentCam === '5') {
-                view.style.background = images.cam5;
-            } else if (currentCam === '2A') {
-                view.style.background = images.cam2A;
             }
         }
-
-        // Устанавливаем фон офиса при загрузке
-        document.getElementById('office').style.background = images.office;
-
     </script>
 </body>
 </html>
