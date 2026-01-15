@@ -1,149 +1,257 @@
-Никита, [14.01.2026 14:35]
+Никита, [15.01.2026 0:17]
 <!DOCTYPE html>
 <html lang="ru">
 <head>
     <meta charset="UTF-8">
-    <title>FNAF Prototype Fixed</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Space Sandbox: Survival of the Biggest</title>
     <style>
-        body { margin: 0; overflow: hidden; background: #000; font-family: Courier, monospace; }
-
-        /* ОФИС */
-        #office {
-            width: 100vw;
-            height: 100vh;
-            background-image: url('10926.webp'); /* Используем твой файл напрямую */
-            background-size: cover;
-            background-position: center;
-            position: relative;
-        }
-
-        /* ДВЕРИ (рисуем кодом, чтобы не зависеть от картинок) */
-        .door-frame {
-            position: absolute;
-            top: 15%;
-            width: 20%;
-            height: 85%;
+        body {
+            margin: 0;
             overflow: hidden;
-            z-index: 5;
-        }
-        #frame-left { left: 0; }
-        #frame-right { right: 0; }
-
-        .door-visual {
-            width: 100%;
-            height: 0%; /* Открыта */
-            background: linear-gradient(to bottom, #444, #222);
-            border-bottom: 10px solid #111;
-            transition: height 0.3s ease-in-out;
-        }
-        .door-visual.closed { height: 100%; }
-
-        /* КНОПКИ (сделал их видимыми, чтобы ты точно мог нажать) */
-        .controls {
-            position: absolute;
-            top: 50%;
-            display: flex;
-            flex-direction: column;
-            gap: 10px;
-            z-index: 10;
-        }
-        #ctrl-left { left: 21%; }
-        #ctrl-right { right: 21%; }
-
-        .btn {
-            width: 40px;
-            height: 40px;
-            border: 3px solid #fff;
-            border-radius: 5px;
-            cursor: pointer;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            font-weight: bold;
+            background-color: #030305;
             color: white;
-            text-shadow: 1px 1px 2px #000;
+            font-family: 'Segoe UI', sans-serif;
+            user-select: none;
         }
-        .btn-door { background: #700; }
-        .btn-door.active { background: #f00; box-shadow: 0 0 15px #f00; }
-
-        /* ПЛАНШЕТ */
-        #monitor-btn {
+        canvas { display: block; }
+        #ui {
             position: absolute;
-            bottom: 20px;
-            left: 50%;
-            transform: translateX(-50%);
-            width: 300px;
-            height: 40px;
-            background: rgba(255,255,255,0.2);
-            border: 2px solid #fff;
-            color: #fff;
+            top: 10px;
+            left: 10px;
+            background: rgba(0, 0, 0, 0.85);
+            padding: 15px;
+            border-radius: 12px;
+            border: 1px solid #444;
+            pointer-events: none;
+            width: 260px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.7);
+        }
+        #controls { pointer-events: auto; margin-top: 10px; }
+        h1 { margin: 0 0 10px 0; font-size: 20px; color: #00d2ff; text-align: center; }
+        h2 { margin: 15px 0 5px 0; font-size: 13px; color: #888; text-transform: uppercase; }
+        
+        button {
+            background: #2a2a2a;
+            color: white;
+            border: 1px solid #444;
+            padding: 8px;
             cursor: pointer;
-            z-index: 100;
+            border-radius: 6px;
+            width: 100%;
+            margin-bottom: 5px;
+            transition: 0.2s;
         }
-
-        #tablet {
-            display: none;
-            position: absolute;
-            top: 0; left: 0; width: 100%; height: 100%;
-            background: #111;
-            z-index: 200;
-            border: 10px solid #333;
-            box-sizing: border-box;
+        button:hover { background: #3a3a3a; border-color: #00d2ff; }
+        
+        .setting-row { margin-bottom: 12px; pointer-events: auto; }
+        input[type=range] { width: 100%; cursor: pointer; accent-color: #00d2ff; }
+        input[type=color] {
+            width: 100%; height: 30px; border: none; border-radius: 4px;
+            background: none; cursor: pointer;
         }
-
-        .static {
-            position: absolute; top: 0; left: 0; width: 100%; height: 100%;
-            background: url('https://media.giphy.com/media/oEI9uWUicGLeE/giphy.gif');
-            opacity: 0.1; pointer-events: none;
-        }
-
-        #cam-display {
-            width: 100%; height: 100%;
-            display: flex; align-items: center; justify-content: center;
-            color: white; font-size: 40px;
-        }
+        .val-label { float: right; color: #00d2ff; font-weight: bold; }
+        .stats { margin-top: 10px; font-size: 11px; color: #666; border-top: 1px solid #333; padding-top: 5px; }
     </style>
 </head>
 <body>
 
-<div id="office">
-    <div id="frame-left" class="door-frame"><div id="door-left" class="door-visual"></div></div>
-    <div id="frame-right" class="door-frame"><div id="door-right" class="door-visual"></div></div>
+    <div id="ui">
+        <h1>Космос v5.0</h1>
+        
+        <div class="setting-row">
+            <label>Скорость времени: <span id="timeVal" class="val-label">1.0x</span></label>
+            <input type="range" id="timeSlider" min="0" max="5" step="0.1" value="1">
+        </div>
 
-    <div id="ctrl-left" class="controls">
-        <div class="btn btn-door" onclick="toggleDoor('left', this)">D</div>
+        <h2>Создание</h2>
+        <div class="setting-row">
+            <label>Цвет:</label>
+            <input type="color" id="planetColor" value="#00ffcc">
+        </div>
+        <div class="setting-row">
+            <label>Масса: <span id="massVal" class="val-label">30</span></label>
+            <input type="range" id="planetMass" min="5" max="600" step="1" value="30">
+        </div>
+
+        <div id="controls">
+            <button onclick="togglePause()">Пауза (Space)</button>
+            <div style="display: flex; gap: 5px;">
+                <button onclick="clearPlanets()">Очистить</button>
+                <button onclick="resetSim()">Сброс</button>
+            </div>
+        </div>
+        
+        <div class="stats">
+            Объектов: <span id="count">0</span> | Зум: Колесо мыши
+        </div>
     </div>
 
-    <div id="ctrl-right" class="controls">
-        <div class="btn btn-door" onclick="toggleDoor('right', this)">D</div>
-    </div>
-
-    <button id="monitor-btn" onclick="toggleTablet()">МОНИТОР</button>
-</div>
-
-<div id="tablet">
-    <div class="static"></div>
-    <div id="cam-display">CAM 1A</div>
-    <button style="position:absolute; bottom:20px; right:20px; padding:20px;" onclick="toggleTablet()">ЗАКРЫТЬ</button>
-</div>
+    <canvas id="canvas"></canvas>
 
 <script>
-    function toggleDoor(side, btn) {
-        const door = document.getElementById('door-' + side);
-        door.classList.toggle('closed');
-        btn.classList.toggle('active');
-    }
+    const canvas = document.getElementById('canvas');
+    const ctx = canvas.getContext('2d');
 
-Никита, [14.01.2026 14:35]
-function toggleTablet() {
-        const tablet = document.getElementById('tablet');
-        if (tablet.style.display === 'block') {
-            tablet.style.display = 'none';
-        } else {
-            tablet.style.display = 'block';
+    let width, height, scale = 1, paused = false, timeSpeed = 1.0;
+    let bodies = [], particles = [], stars = [];
+    let isDragging = false, dragCurrent = { x: 0, y: 0 }, worldDragStart = { x: 0, y: 0 }; 
+
+    const timeSlider = document.getElementById('timeSlider');
+    const timeValLabel = document.getElementById('timeVal');
+    const massSlider = document.getElementById('planetMass');
+    const massValLabel = document.getElementById('massVal');
+    const colorPicker = document.getElementById('planetColor');
+
+    timeSlider.oninput = (e) => { timeSpeed = parseFloat(e.target.value); timeValLabel.innerText = timeSpeed.toFixed(1) + 'x'; };
+    massSlider.oninput = (e) => { massValLabel.innerText = e.target.value; };
+
+class Particle {
+        constructor(x, y, color) {
+            this.x = x; this.y = y;
+            const angle = Math.random() * Math.PI * 2;
+            const speed = Math.random() * 5 + 2;
+            this.vx = Math.cos(angle) * speed;
+            this.vy = Math.sin(angle) * speed;
+            this.life = 1.0;
+            this.decay = Math.random() * 0.04 + 0.02;
+            this.color = color;
+        }
+        update(dt) { this.x += this.vx * dt; this.y += this.vy * dt; this.life -= this.decay * dt; }
+        draw() {
+            ctx.globalAlpha = Math.max(0, this.life);
+            ctx.fillStyle = this.color;
+            ctx.beginPath(); ctx.arc(this.x, this.y, 2, 0, Math.PI * 2); ctx.fill();
         }
     }
-</script>
 
+    class Body {
+        constructor(x, y, vx, vy, mass, color, isStatic = false) {
+            this.x = x; this.y = y; this.vx = vx; this.vy = vy;
+            this.mass = mass;
+            this.radius = Math.sqrt(mass) * 2;
+            this.color = color;
+            this.isStatic = isStatic;
+            this.history = [];
+            this.isDead = false;
+        }
+
+        update(dt) {
+            if (this.isStatic) return;
+            for (let other of bodies) {
+                if (other === this || other.isDead) continue;
+                let dx = other.x - this.x;
+                let dy = other.y - this.y;
+                let distSq = dx * dx + dy * dy;
+                let dist = Math.sqrt(distSq);
+
+                // --- НОВАЯ ЛОГИКА СТОЛКНОВЕНИЙ ---
+                if (dist < this.radius + other.radius) {
+                    if (other.isStatic) {
+                        this.explode();
+                        this.isDead = true;
+                    } else if (this.mass === other.mass) {
+                        // Равные массы - оба взрываются
+                        this.explode(); other.explode();
+                        this.isDead = true; other.isDead = true;
+                    } else if (this.mass < other.mass) {
+                        // Мы меньше - взрываемся только мы
+                        this.explode();
+                        this.isDead = true;
+                    } else {
+                        // Мы больше - взрывается тот, другой
+                        other.explode();
+                        other.isDead = true;
+                    }
+                    return; 
+                }
+
+                let force = (0.5 * other.mass / distSq);
+                this.vx += (force * dx / dist) * dt;
+                this.vy += (force * dy / dist) * dt;
+            }
+            this.x += this.vx * dt;
+            this.y += this.vy * dt;
+            if (Math.random() > 0.5) this.history.push({x: this.x, y: this.y});
+            if (this.history.length > 50) this.history.shift();
+        }
+
+        explode() {
+            for(let i=0; i<15; i++) particles.push(new Particle(this.x, this.y, this.color));
+        }
+
+        draw() {
+            ctx.beginPath(); ctx.strokeStyle = this.color; ctx.globalAlpha = 0.2;
+            this.history.forEach(p => ctx.lineTo(p.x, p.y));
+            ctx.stroke(); ctx.globalAlpha = 1;
+            ctx.beginPath(); ctx.arc(this.x, this.y, this.radius, 0, Math.PI * 2);
+            ctx.fillStyle = this.color;
+            if (this.mass > 150) { ctx.shadowBlur = 15 * scale; ctx.shadowColor = this.color; }
+            ctx.fill(); ctx.shadowBlur = 0;
+        }
+    }
+
+    function init() {
+        resize();
+        for(let i=0; i<400; i++) stars.push({ x: (Math.random()-0.5)*width*5, y: (Math.random()-0.5)*height*5, s: Math.random()*2 });
+        resetSim();
+        loop();
+    }
+
+    function resetSim() {
+        bodies = [new Body(width/2, height/2, 0, 0, 400, '#ffcc00', true)];
+        particles = []; scale = 1;
+    }
+
+    function clearPlanets() { bodies = bodies.filter(b => b.isStatic); }
+    function resize() { width = canvas.width = window.innerWidth; height = canvas.height = window.innerHeight; }
+
+function loop() {
+        requestAnimationFrame(loop);
+        ctx.fillStyle = '#030305'; ctx.fillRect(0, 0, width, height);
+        ctx.save();
+        ctx.translate(width/2, height/2); ctx.scale(scale, scale); ctx.translate(-width/2, -height/2);
+
+        ctx.fillStyle = 'white';
+        stars.forEach(s => ctx.fillRect(s.x, s.y, s.s, s.s));
+
+        if (!paused) {
+            bodies.forEach(b => b.update(timeSpeed));
+            bodies = bodies.filter(b => !b.isDead);
+            particles.forEach(p => p.update(timeSpeed));
+            particles = particles.filter(p => p.life > 0);
+        }
+
+        bodies.forEach(b => b.draw());
+        particles.forEach(p => p.draw());
+
+        if (isDragging) {
+            const worldCurr = { x: (dragCurrent.x - width/2) / scale + width/2, y: (dragCurrent.y - height/2) / scale + height/2 };
+            ctx.beginPath(); ctx.moveTo(worldDragStart.x, worldDragStart.y); ctx.lineTo(worldCurr.x, worldCurr.y);
+            ctx.strokeStyle = 'white'; ctx.setLineDash([5, 5]); ctx.stroke(); ctx.setLineDash([]);
+            ctx.beginPath(); ctx.arc(worldDragStart.x, worldDragStart.y, Math.sqrt(massSlider.value)*2, 0, Math.PI*2);
+            ctx.fillStyle = colorPicker.value; ctx.globalAlpha = 0.4; ctx.fill(); ctx.globalAlpha = 1;
+        }
+        ctx.restore();
+        document.getElementById('count').innerText = bodies.length;
+    }
+
+    window.onresize = resize;
+    window.onkeydown = (e) => { if(e.code === 'Space') paused = !paused; };
+    canvas.onwheel = (e) => { scale = Math.min(Math.max(scale * (e.deltaY < 0 ? 1.1 : 0.9), 0.05), 10); };
+    canvas.onmousedown = (e) => {
+        isDragging = true;
+        worldDragStart = { x: (e.clientX - width/2) / scale + width/2, y: (e.clientY - height/2) / scale + height/2 };
+        dragCurrent = { x: e.clientX, y: e.clientY };
+    };
+    window.onmousemove = (e) => { if (isDragging) dragCurrent = { x: e.clientX, y: e.clientY }; };
+    window.onmouseup = (e) => {
+        if (!isDragging) return; isDragging = false;
+        const worldEnd = { x: (e.clientX - width/2) / scale + width/2, y: (e.clientY - height/2) / scale + height/2 };
+        bodies.push(new Body(worldDragStart.x, worldDragStart.y, (worldDragStart.x - worldEnd.x)*0.05, (worldDragStart.y - worldEnd.y)*0.05, parseFloat(massSlider.value), colorPicker.value));
+    };
+
+    init();
+</script>
 </body>
 </html>
