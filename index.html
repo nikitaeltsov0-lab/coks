@@ -1,244 +1,227 @@
-Никита, [15.01.2026 0:17]
 <!DOCTYPE html>
 <html lang="ru">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Space Sandbox: Survival of the Biggest</title>
+    <title>Solar Sandbox Final + Realistic Sun</title>
     <style>
-        body {
-            margin: 0;
-            overflow: hidden;
-            background-color: #030305;
-            color: white;
-            font-family: 'Segoe UI', sans-serif;
-            user-select: none;
-        }
+        body { margin: 0; overflow: hidden; background-color: #020204; color: white; font-family: 'Segoe UI', sans-serif; user-select: none; }
         canvas { display: block; }
         #ui {
-            position: absolute;
-            top: 10px;
-            left: 10px;
-            background: rgba(0, 0, 0, 0.85);
-            padding: 15px;
-            border-radius: 12px;
-            border: 1px solid #444;
-            pointer-events: none;
-            width: 260px;
-            box-shadow: 0 10px 30px rgba(0,0,0,0.7);
+            position: absolute; top: 10px; left: 10px; background: rgba(10, 10, 15, 0.9);
+            padding: 15px; border-radius: 12px; border: 1px solid #333; width: 260px;
+            max-height: 90vh; overflow-y: auto; box-shadow: 0 0 20px rgba(0,0,0,0.5);
         }
-        #controls { pointer-events: auto; margin-top: 10px; }
-        h1 { margin: 0 0 10px 0; font-size: 20px; color: #00d2ff; text-align: center; }
-        h2 { margin: 15px 0 5px 0; font-size: 13px; color: #888; text-transform: uppercase; }
-        
-        button {
-            background: #2a2a2a;
-            color: white;
-            border: 1px solid #444;
-            padding: 8px;
-            cursor: pointer;
-            border-radius: 6px;
-            width: 100%;
-            margin-bottom: 5px;
-            transition: 0.2s;
+        h1 { margin: 0 0 10px 0; font-size: 16px; color: #00d2ff; text-align: center; }
+        h2 { margin: 15px 0 5px 0; font-size: 11px; color: #666; text-transform: uppercase; border-bottom: 1px solid #222; }
+        .planet-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 4px; margin-bottom: 10px; }
+        .planet-btn {
+            background: #1a1a1a; border: 1px solid #333; color: #ccc; padding: 6px;
+            cursor: pointer; border-radius: 4px; font-size: 11px; transition: 0.2s;
         }
-        button:hover { background: #3a3a3a; border-color: #00d2ff; }
-        
-        .setting-row { margin-bottom: 12px; pointer-events: auto; }
-        input[type=range] { width: 100%; cursor: pointer; accent-color: #00d2ff; }
-        input[type=color] {
-            width: 100%; height: 30px; border: none; border-radius: 4px;
-            background: none; cursor: pointer;
+        .planet-btn:hover { background: #252525; }
+        .planet-btn.active { background: #00d2ff; color: #000; font-weight: bold; }
+        .control-btn {
+            background: #2a2a2a; color: white; border: 1px solid #444;
+            padding: 8px; cursor: pointer; border-radius: 6px; width: 100%;
+            margin-bottom: 4px; font-size: 12px;
         }
+        .control-btn.danger { border-color: #ff4444; color: #ff4444; }
+        .control-btn.danger:hover { background: #441111; }
+        .setting-row { margin-bottom: 8px; }
+        input[type=range] { width: 100%; accent-color: #00d2ff; }
         .val-label { float: right; color: #00d2ff; font-weight: bold; }
-        .stats { margin-top: 10px; font-size: 11px; color: #666; border-top: 1px solid #333; padding-top: 5px; }
     </style>
 </head>
 <body>
 
     <div id="ui">
-        <h1>Космос v5.0</h1>
+        <h1>SOLAR SANDBOX</h1>
+        <h2>Планеты</h2>
+        <div class="planet-grid" id="planetGrid"></div>
         
+        <h2>Настройки</h2>
+        <div class="setting-row">
+            <label>Масса: <span id="massVal" class="val-label">--</span></label>
+            <input type="range" id="planetMass" min="5" max="2000" step="5">
+        </div>
         <div class="setting-row">
             <label>Скорость времени: <span id="timeVal" class="val-label">1.0x</span></label>
-            <input type="range" id="timeSlider" min="0" max="5" step="0.1" value="1">
+            <input type="range" id="timeSlider" min="0" max="10" step="0.2" value="1">
         </div>
 
-        <h2>Создание</h2>
-        <div class="setting-row">
-            <label>Цвет:</label>
-            <input type="color" id="planetColor" value="#00ffcc">
-        </div>
-        <div class="setting-row">
-            <label>Масса: <span id="massVal" class="val-label">30</span></label>
-            <input type="range" id="planetMass" min="5" max="600" step="1" value="30">
-        </div>
-
-        <div id="controls">
-            <button onclick="togglePause()">Пауза (Space)</button>
-            <div style="display: flex; gap: 5px;">
-                <button onclick="clearPlanets()">Очистить</button>
-                <button onclick="resetSim()">Сброс</button>
-            </div>
-        </div>
+        <button class="control-btn" id="pauseBtn" onclick="togglePause()">Пауза (Space)</button>
+        <button class="control-btn" onclick="resetSim()">Сброс Системы</button>
+        <button class="control-btn danger" onclick="clearEverything()">Очистить всё (кроме Солнца)</button>
         
-        <div class="stats">
-            Объектов: <span id="count">0</span> | Зум: Колесо мыши
-        </div>
+        <div style="font-size: 10px; color: #444; margin-top: 10px; text-align: center;">ЛКМ + Тянуть: Запуск | Колесо: Зум</div>
     </div>
 
     <canvas id="canvas"></canvas>
 
 <script>
+    // Ссылка на текстуру Солнца (NASA SDO)
+    const SUN_TEXTURE_URL = "https://upload.wikimedia.org/wikipedia/commons/thumb/b/b4/The_Sun_by_the_Atmospheric_Imaging_Assembly_of_NASA%27s_Solar_Dynamics_Observatory_-_20100819.jpg/600px-The_Sun_by_the_Atmospheric_Imaging_Assembly_of_NASA%27s_Solar_Dynamics_Observatory_-_20100819.jpg";
+
+    const planetData = {
+        mercury: { name: "Меркурий", mass: 10, dist: 300, color: "#a5a5a5", img: "https://upload.wikimedia.org/wikipedia/commons/thumb/4/4a/Mercury_in_true_color.jpg/600px-Mercury_in_true_color.jpg" },
+        venus:   { name: "Венера",   mass: 30, dist: 550, color: "#e3bb76", img: "https://upload.wikimedia.org/wikipedia/commons/thumb/0/08/Venus_from_Mariner_10.jpg/600px-Venus_from_Mariner_10.jpg" },
+        earth:   { name: "Земля",    mass: 35, dist: 850, color: "#22aaff", img: "https://upload.wikimedia.org/wikipedia/commons/thumb/9/97/The_Earth_seen_from_Apollo_17.jpg/600px-The_Earth_seen_from_Apollo_17.jpg" },
+        mars:    { name: "Марс",     mass: 20, dist: 1200, color: "#ff4500", img: "https://upload.wikimedia.org/wikipedia/commons/thumb/0/02/OSIRIS_Mars_true_color.jpg/600px-OSIRIS_Mars_true_color.jpg" },
+        jupiter: { name: "Юпитер",   mass: 400, dist: 2000, color: "#d9a066", img: "https://upload.wikimedia.org/wikipedia/commons/thumb/e/e2/Jupiter.jpg/600px-Jupiter.jpg" },
+        saturn:  { name: "Сатурн",   mass: 350, dist: 2800, color: "#f4d03f", img: "https://upload.wikimedia.org/wikipedia/commons/thumb/c/c7/Saturn_during_Equinox.jpg/800px-Saturn_during_Equinox.jpg" },
+        uranus:  { name: "Уран",     mass: 120, dist: 3700, color: "#40e0d0", img: "https://upload.wikimedia.org/wikipedia/commons/thumb/3/3d/Uranus2.jpg/600px-Uranus2.jpg" },
+        neptune: { name: "Нептун",   mass: 130, dist: 4600, color: "#4169e1", img: "https://upload.wikimedia.org/wikipedia/commons/thumb/5/56/Neptune_Full.jpg/600px-Neptune_Full.jpg" }
+    };
+
+    const textures = {};
     const canvas = document.getElementById('canvas');
     const ctx = canvas.getContext('2d');
-
-    let width, height, scale = 1, paused = false, timeSpeed = 1.0;
+    let width, height, scale = 0.15, paused = false, timeSpeed = 1.0;
     let bodies = [], particles = [], stars = [];
-    let isDragging = false, dragCurrent = { x: 0, y: 0 }, worldDragStart = { x: 0, y: 0 }; 
+    let isDragging = false, dragCurrent = {x:0, y:0}, worldDragStart = {x:0, y:0};
+    let currentTextureKey = 'earth';
+    const G = 1.5;
 
-    const timeSlider = document.getElementById('timeSlider');
-    const timeValLabel = document.getElementById('timeVal');
-    const massSlider = document.getElementById('planetMass');
-    const massValLabel = document.getElementById('massVal');
-    const colorPicker = document.getElementById('planetColor');
+    function loadTextures() {
+        const sunImg = new Image();
+        sunImg.crossOrigin = "anonymous";
+        sunImg.src = SUN_TEXTURE_URL;
+        textures['sun'] = sunImg;
 
-    timeSlider.oninput = (e) => { timeSpeed = parseFloat(e.target.value); timeValLabel.innerText = timeSpeed.toFixed(1) + 'x'; };
-    massSlider.oninput = (e) => { massValLabel.innerText = e.target.value; };
-
-class Particle {
-        constructor(x, y, color) {
-            this.x = x; this.y = y;
-            const angle = Math.random() * Math.PI * 2;
-            const speed = Math.random() * 5 + 2;
-            this.vx = Math.cos(angle) * speed;
-            this.vy = Math.sin(angle) * speed;
-            this.life = 1.0;
-            this.decay = Math.random() * 0.04 + 0.02;
-            this.color = color;
-        }
-        update(dt) { this.x += this.vx * dt; this.y += this.vy * dt; this.life -= this.decay * dt; }
-        draw() {
-            ctx.globalAlpha = Math.max(0, this.life);
-            ctx.fillStyle = this.color;
-            ctx.beginPath(); ctx.arc(this.x, this.y, 2, 0, Math.PI * 2); ctx.fill();
+        for (let key in planetData) {
+            const img = new Image();
+            img.crossOrigin = "anonymous";
+            img.src = planetData[key].img;
+            textures[key] = img;
         }
     }
 
     class Body {
-        constructor(x, y, vx, vy, mass, color, isStatic = false) {
+        constructor(x, y, vx, vy, mass, color, textureKey = null, isStatic = false) {
             this.x = x; this.y = y; this.vx = vx; this.vy = vy;
-            this.mass = mass;
-            this.radius = Math.sqrt(mass) * 2;
-            this.color = color;
-            this.isStatic = isStatic;
-            this.history = [];
-            this.isDead = false;
+            this.mass = mass; this.radius = Math.sqrt(mass) * 2.5;
+            this.color = color; this.textureKey = textureKey;
+            this.isStatic = isStatic; this.isDead = false;
         }
-
         update(dt) {
             if (this.isStatic) return;
             for (let other of bodies) {
                 if (other === this || other.isDead) continue;
-                let dx = other.x - this.x;
-                let dy = other.y - this.y;
+                let dx = other.x - this.x, dy = other.y - this.y;
                 let distSq = dx * dx + dy * dy;
                 let dist = Math.sqrt(distSq);
-
-                // --- НОВАЯ ЛОГИКА СТОЛКНОВЕНИЙ ---
                 if (dist < this.radius + other.radius) {
-                    if (other.isStatic) {
-                        this.explode();
-                        this.isDead = true;
-                    } else if (this.mass === other.mass) {
-                        // Равные массы - оба взрываются
-                        this.explode(); other.explode();
-                        this.isDead = true; other.isDead = true;
-                    } else if (this.mass < other.mass) {
-                        // Мы меньше - взрываемся только мы
-                        this.explode();
-                        this.isDead = true;
+                    if (Math.abs(this.mass - other.mass) < Math.max(this.mass, other.mass) * 0.15) {
+                        this.isDead = other.isDead = true; explode(this); explode(other);
                     } else {
-                        // Мы больше - взрывается тот, другой
-                        other.explode();
-                        other.isDead = true;
+                        if (this.mass < other.mass) { this.isDead = true; explode(this); }
+                        else { other.isDead = true; explode(other); }
                     }
-                    return; 
+                    return;
                 }
-
-                let force = (0.5 * other.mass / distSq);
+                let force = (G * other.mass / distSq);
                 this.vx += (force * dx / dist) * dt;
                 this.vy += (force * dy / dist) * dt;
             }
-            this.x += this.vx * dt;
-            this.y += this.vy * dt;
-            if (Math.random() > 0.5) this.history.push({x: this.x, y: this.y});
-            if (this.history.length > 50) this.history.shift();
+            this.x += this.vx * dt; this.y += this.vy * dt;
         }
-
-        explode() {
-            for(let i=0; i<15; i++) particles.push(new Particle(this.x, this.y, this.color));
-        }
-
         draw() {
-            ctx.beginPath(); ctx.strokeStyle = this.color; ctx.globalAlpha = 0.2;
-            this.history.forEach(p => ctx.lineTo(p.x, p.y));
-            ctx.stroke(); ctx.globalAlpha = 1;
-            ctx.beginPath(); ctx.arc(this.x, this.y, this.radius, 0, Math.PI * 2);
-            ctx.fillStyle = this.color;
-            if (this.mass > 150) { ctx.shadowBlur = 15 * scale; ctx.shadowColor = this.color; }
-            ctx.fill(); ctx.shadowBlur = 0;
+            ctx.save(); ctx.translate(this.x, this.y);
+            if (this.textureKey && textures[this.textureKey]?.complete) {
+                const img = textures[this.textureKey];
+                if (this.textureKey !== 'saturn') {
+                    ctx.beginPath(); ctx.arc(0, 0, this.radius, 0, Math.PI*2); ctx.clip();
+                    ctx.drawImage(img, -this.radius, -this.radius, this.radius*2, this.radius*2);
+                } else {
+                    const aspect = img.width / img.height;
+                    let h = this.radius * 2.2; let w = h * aspect;
+                    ctx.drawImage(img, -w/2, -h/2, w, h);
+                }
+            } else {
+                ctx.beginPath(); ctx.arc(0, 0, this.radius, 0, Math.PI*2);
+                ctx.fillStyle = this.color; ctx.fill();
+            }
+            ctx.restore();
         }
     }
 
-    function init() {
-        resize();
-        for(let i=0; i<400; i++) stars.push({ x: (Math.random()-0.5)*width*5, y: (Math.random()-0.5)*height*5, s: Math.random()*2 });
-        resetSim();
-        loop();
+    function explode(body) {
+        for(let i=0; i<15; i++) {
+            particles.push({ x: body.x, y: body.y, vx: (Math.random()-0.5)*12, vy: (Math.random()-0.5)*12, life: 1.0, color: body.color });
+        }
+    }
+
+    // ИЗМЕНЕНО: Теперь эта функция оставляет Солнце (isStatic)
+    function clearEverything() { 
+        bodies = bodies.filter(b => b.isStatic); 
+        particles = []; 
     }
 
     function resetSim() {
-        bodies = [new Body(width/2, height/2, 0, 0, 400, '#ffcc00', true)];
-        particles = []; scale = 1;
+        bodies = []; particles = [];
+        const sunMass = 5000;
+        const centerX = width/2, centerY = height/2;
+        bodies.push(new Body(centerX, centerY, 0, 0, sunMass, '#ffcc00', 'sun', true));
+        
+        for (let key in planetData) {
+            const p = planetData[key];
+            const v = Math.sqrt(G * sunMass / p.dist);
+            bodies.push(new Body(centerX + p.dist, centerY, 0, v, p.mass, p.color, key));
+        }
+        scale = 0.15;
     }
 
-    function clearPlanets() { bodies = bodies.filter(b => b.isStatic); }
-    function resize() { width = canvas.width = window.innerWidth; height = canvas.height = window.innerHeight; }
-
-function loop() {
+    function loop() {
         requestAnimationFrame(loop);
-        ctx.fillStyle = '#030305'; ctx.fillRect(0, 0, width, height);
+        ctx.fillStyle = '#020204'; ctx.fillRect(0, 0, width, height);
         ctx.save();
         ctx.translate(width/2, height/2); ctx.scale(scale, scale); ctx.translate(-width/2, -height/2);
-
-        ctx.fillStyle = 'white';
-        stars.forEach(s => ctx.fillRect(s.x, s.y, s.s, s.s));
-
+        stars.forEach(s => { ctx.fillStyle = 'white'; ctx.fillRect(s.x, s.y, s.s, s.s); });
         if (!paused) {
             bodies.forEach(b => b.update(timeSpeed));
             bodies = bodies.filter(b => !b.isDead);
-            particles.forEach(p => p.update(timeSpeed));
+            particles.forEach(p => { p.x += p.vx; p.y += p.vy; p.life -= 0.02; });
             particles = particles.filter(p => p.life > 0);
         }
-
         bodies.forEach(b => b.draw());
-        particles.forEach(p => p.draw());
-
+        particles.forEach(p => {
+            ctx.globalAlpha = p.life; ctx.fillStyle = p.color;
+            ctx.beginPath(); ctx.arc(p.x, p.y, 2, 0, Math.PI*2); ctx.fill();
+        });
+        ctx.globalAlpha = 1.0;
         if (isDragging) {
             const worldCurr = { x: (dragCurrent.x - width/2) / scale + width/2, y: (dragCurrent.y - height/2) / scale + height/2 };
             ctx.beginPath(); ctx.moveTo(worldDragStart.x, worldDragStart.y); ctx.lineTo(worldCurr.x, worldCurr.y);
-            ctx.strokeStyle = 'white'; ctx.setLineDash([5, 5]); ctx.stroke(); ctx.setLineDash([]);
-            ctx.beginPath(); ctx.arc(worldDragStart.x, worldDragStart.y, Math.sqrt(massSlider.value)*2, 0, Math.PI*2);
-            ctx.fillStyle = colorPicker.value; ctx.globalAlpha = 0.4; ctx.fill(); ctx.globalAlpha = 1;
+            ctx.strokeStyle = '#555'; ctx.setLineDash([5, 5]); ctx.stroke();
         }
         ctx.restore();
-        document.getElementById('count').innerText = bodies.length;
     }
 
-    window.onresize = resize;
-    window.onkeydown = (e) => { if(e.code === 'Space') paused = !paused; };
-    canvas.onwheel = (e) => { scale = Math.min(Math.max(scale * (e.deltaY < 0 ? 1.1 : 0.9), 0.05), 10); };
+    function initUI() {
+        const grid = document.getElementById('planetGrid');
+        for (let key in planetData) {
+            const btn = document.createElement('button');
+            btn.className = 'planet-btn'; btn.innerText = planetData[key].name;
+            btn.onclick = () => {
+                document.querySelectorAll('.planet-btn').forEach(b => b.classList.remove('active'));
+                btn.classList.add('active'); currentTextureKey = key;
+                document.getElementById('planetMass').value = planetData[key].mass;
+                document.getElementById('massVal').innerText = planetData[key].mass;
+            };
+            grid.appendChild(btn);
+        }
+        document.getElementById('planetMass').oninput = (e) => document.getElementById('massVal').innerText = e.target.value;
+        document.getElementById('timeSlider').oninput = (e) => {
+            timeSpeed = parseFloat(e.target.value);
+            document.getElementById('timeVal').innerText = timeSpeed.toFixed(1) + 'x';
+        };
+    }
+
+    function togglePause() { paused = !paused; document.getElementById('pauseBtn').innerText = paused ? "Пуск" : "Пауза"; }
+
+    window.onresize = () => { width = canvas.width = window.innerWidth; height = canvas.height = window.innerHeight; };
+    canvas.onwheel = (e) => { scale *= (e.deltaY < 0 ? 1.1 : 0.9); scale = Math.max(0.001, Math.min(scale, 10)); };
     canvas.onmousedown = (e) => {
         isDragging = true;
         worldDragStart = { x: (e.clientX - width/2) / scale + width/2, y: (e.clientY - height/2) / scale + height/2 };
@@ -248,10 +231,14 @@ function loop() {
     window.onmouseup = (e) => {
         if (!isDragging) return; isDragging = false;
         const worldEnd = { x: (e.clientX - width/2) / scale + width/2, y: (e.clientY - height/2) / scale + height/2 };
-        bodies.push(new Body(worldDragStart.x, worldDragStart.y, (worldDragStart.x - worldEnd.x)*0.05, (worldDragStart.y - worldEnd.y)*0.05, parseFloat(massSlider.value), colorPicker.value));
+        bodies.push(new Body(worldDragStart.x, worldDragStart.y, (worldDragStart.x - worldEnd.x)*0.05, (worldDragStart.y - worldEnd.y)*0.05, parseFloat(document.getElementById('planetMass').value), planetData[currentTextureKey].color, currentTextureKey));
     };
 
-    init();
+    width = canvas.width = window.innerWidth; height = canvas.height = window.innerHeight;
+    loadTextures(); initUI();
+    stars = Array.from({length: 800}, () => ({x: (Math.random()-0.5)*10000, y: (Math.random()-0.5)*10000, s: Math.random()*2}));
+    resetSim();
+    loop();
 </script>
 </body>
 </html>
